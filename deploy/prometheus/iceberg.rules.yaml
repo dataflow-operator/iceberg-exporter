@@ -1,0 +1,190 @@
+# Правила для iceberg-exporter.
+#
+# Пороги живут здесь, не в экспортере: свежесть стриминговой таблицы и суточного
+# батча разная. Две константы ниже должны совпадать с конфигом:
+#   iceberg_rules:catalog_list_interval_seconds — max(scrape interval, catalog_list_interval).
+#     Для Nessie list заменён проверкой hash, поэтому это интервал scrape.
+#   iceberg_rules:manifest_refresh_interval_seconds — manifest_refresh_interval.
+#     В коде дефолт DefaultRefreshInterval = 1h.
+#
+# iceberg_catalog_ref_head_age_seconds на дашборд выводится всегда.
+# Алерт по нему молчит, пока для ref нет recording rule
+# iceberg_rules:ref_head_max_age_seconds. Включайте его только для ref,
+# от которых ждут регулярные коммиты, со своим порогом:
+#
+#   - record: iceberg_rules:ref_head_max_age_seconds
+#     expr: (iceberg_catalog_ref_head_age_seconds{catalog="prod",ref="main"} * 0) + 3600
+#
+# Расхождение веток и format version 1 — панели, не алерты.
+# Отдельное правило на iceberg_ref_tables_diverged имеет смысл только для пары
+# prod-ref, если такой процесс есть.
+#
+# File-level алерты (small files, partition skew) требуют per-table
+# iceberg_table_manifest_cache_age_seconds моложе двух интервалов скана.
+# Гистограмма и skew отдаются из памяти на каждом scrape, поэтому timestamp()
+# не отличает свежий скан от закэшированного.
+#
+# Job target up должен называться iceberg-exporter.
+
+groups:
+  - name: iceberg
+    rules:
+      - record: iceberg_rules:catalog_list_interval_seconds
+        expr: vector(60)
+
+      - record: iceberg_rules:catalog_list_max_age_seconds
+        expr: 3 * iceberg_rules:catalog_list_interval_seconds
+
+      - record: iceberg_rules:manifest_refresh_interval_seconds
+        expr: vector(3600)
+
+      - record: iceberg_rules:manifest_cache_fresh_seconds
+        expr: 2 * iceberg_rules:manifest_refresh_interval_seconds
+
+      - alert: IcebergCatalogDown
+        expr: iceberg_catalog_up == 0
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Каталог {{ $labels.catalog }} ({{ $labels.type }}) недоступен"
+          description: "iceberg_catalog_up равен 0 дольше 5 минут."
+
+      - alert: IcebergExporterDown
+        expr: up{job="iceberg-exporter"} == 0
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Таргет iceberg-exporter не отвечает на scrape"
+          description: "Prometheus видит up == 0 для job iceberg-exporter дольше 5 минут."
+
+      - alert: IcebergCatalogListStale
+        expr: |
+          iceberg_catalog_list_age_seconds
+            > on() group_left()
+          iceberg_rules:catalog_list_max_age_seconds
+        labels:
+          severity: page
+        annotations:
+          summary: "Список таблиц каталога {{ $labels.catalog }} устарел"
+          description: "Возраст кэша списка больше трёх интервалов list или scrape. Для Nessie это застрявшая проверка hash."
+
+      - alert: IcebergCatalogScrapeErrors
+        expr: |
+          count by (catalog, ref) (
+            max by (catalog, ref, namespace, table) (iceberg_table_scrape_error) == 1
+          )
+          >
+          0.05 * sum by (catalog, ref) (iceberg_tables)
+        for: 15m
+        labels:
+          severity: page
+        annotations:
+          summary: "Больше 5% таблиц {{ $labels.catalog }}/{{ $labels.ref }} с ошибкой scrape"
+          description: "Доля таблиц с iceberg_table_scrape_error == 1 больше 5% от iceberg_tables дольше 15 минут. Это доступ к warehouse или разбор metadata, а не одна кривая таблица."
+
+      - alert: IcebergManifestQueueGrowing
+        expr: deriv(iceberg_exporter_manifest_queue[15m]) > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Очередь manifest entries растёт 30 минут"
+          description: "Краткосрочный наклон iceberg_exporter_manifest_queue остаётся положительным 30 минут. File-level панели в этот момент врут по свежести."
+
+      - alert: IcebergCatalogRefHeadStale
+        expr: |
+          iceberg_catalog_ref_head_age_seconds
+            > on (catalog, ref) group_left()
+          iceberg_rules:ref_head_max_age_seconds
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ref {{ $labels.ref }} каталога {{ $labels.catalog }} без коммитов дольше своего порога"
+          description: "Срабатывает только для ref, у которых задана iceberg_rules:ref_head_max_age_seconds. Feature-ветки без такого порога не алертятся."
+
+      - alert: IcebergTableMetadataRetention
+        expr: |
+          (
+            iceberg_table_snapshots > 1000
+            or
+            iceberg_table_metadata_log_entries > 100
+          )
+          unless on (catalog, ref, namespace, table)
+          (iceberg_table_has_snapshot == 0)
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Таблица {{ $labels.namespace }}.{{ $labels.table }} копит metadata"
+          description: "Больше 1000 snapshot или 100 записей metadata log дольше часа. Похоже, expire_snapshots и rewrite metadata не бегут. Пустые таблицы без snapshot не алертятся."
+
+      - alert: IcebergTablePositionDeletes
+        expr: |
+          (
+            iceberg_table_position_deletes
+              / clamp_min(iceberg_table_records, 1)
+            > 0.2
+          )
+          and on (catalog, ref, namespace, table)
+          (iceberg_table_records > 1000000)
+        for: 24h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокое давление position delete на {{ $labels.namespace }}.{{ $labels.table }}"
+          description: "position deletes / records выше 0.2 при больше чем миллионе записей дольше суток. Equality deletes смотрите отдельной панелью: универсального порога нет."
+
+      - alert: IcebergTableSmallFiles
+        expr: |
+          (
+            iceberg_table_small_files_ratio > 0.5
+            and
+            iceberg_table_data_files > 100
+          )
+          and on (catalog, ref, namespace, table)
+          (
+            iceberg_table_manifest_cache_age_seconds
+              < on() group_left()
+            iceberg_rules:manifest_cache_fresh_seconds
+          )
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Больше половины файлов {{ $labels.namespace }}.{{ $labels.table }} меньше порога"
+          description: "Доля мелких файлов выше 0.5 при более чем 100 data files дольше 6 часов. Порог размера зашит в серию (по умолчанию 32MiB) и не является label. Алерт молчит, если per-table кэш manifest entries старше двух интервалов скана."
+
+      - alert: IcebergTablePartitionSkew
+        expr: |
+          (
+            iceberg_table_partition_skew_ratio > 10
+            and
+            iceberg_table_partitions >= 10
+          )
+          and on (catalog, ref, namespace, table)
+          (
+            iceberg_table_manifest_cache_age_seconds
+              < on() group_left()
+            iceberg_rules:manifest_cache_fresh_seconds
+          )
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Перекос партиций {{ $labels.namespace }}.{{ $labels.table }}"
+          description: "max/avg по байтам выше 10 при не менее чем 10 партициях. На двух партициях ratio шумит и не алертится. Алерт молчит, если per-table кэш manifest entries старше двух интервалов скана."
+
+      - alert: IcebergTableManifestCacheStale
+        expr: |
+          iceberg_table_manifest_cache_age_seconds
+            > on() group_left()
+          iceberg_rules:manifest_cache_fresh_seconds
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Кэш manifest entries таблицы {{ $labels.namespace }}.{{ $labels.table }} устарел"
+          description: "Возраст per-table кэша выше двух manifest_refresh_interval дольше 30 минут. Это алерт на экспортер, не на таблицу. Гистограмма и skew при этом отдаются из памяти."

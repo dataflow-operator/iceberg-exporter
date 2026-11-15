@@ -1,0 +1,56 @@
+version: "3"
+
+vars:
+  COMPOSE_FILE: deploy/local/docker-compose.yml
+
+tasks:
+  default:
+    desc: Список команд
+    cmds:
+      - task --list
+
+  up:
+    desc: Поднять Nessie, генератор, экспортёр, Prometheus и Grafana
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} up -d --build
+      - |
+        echo "Grafana     http://localhost:3001"
+        echo "Prometheus  http://localhost:9090"
+        echo "Metrics     http://localhost:8080/metrics"
+        echo "Nessie      http://localhost:19120"
+        echo "MinIO       http://localhost:9003"
+
+  down:
+    desc: Остановить стенд
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} down
+
+  reset:
+    desc: Остановить стенд и удалить данные
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} down -v
+
+  logs:
+    desc: Смотреть логи стенда
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} logs -f --tail=200
+
+  ps:
+    desc: Статус контейнеров
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} ps
+
+  metrics:
+    desc: Показать /metrics экспортёра
+    cmds:
+      - curl -fsS http://localhost:8080/metrics
+
+  test:
+    desc: Прогнать go test
+    cmds:
+      - go test ./...
+
+  check:
+    desc: Дождаться живого каталога и таблиц
+    cmds:
+      - sh deploy/local/check.sh
