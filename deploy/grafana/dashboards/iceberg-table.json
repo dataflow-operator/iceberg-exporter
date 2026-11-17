@@ -123,7 +123,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_records{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_records{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -185,7 +185,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_data_files{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_data_files{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -247,7 +247,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_files_size_bytes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_files_size_bytes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -309,7 +309,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_snapshot_age_seconds{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_snapshot_age_seconds{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -371,7 +371,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_partitions{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partitions{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -433,7 +433,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_manifests{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table, content) (iceberg_table_manifests{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -495,7 +495,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_last_snapshot_info{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"} == 1",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table, operation) (iceberg_table_last_snapshot_info{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"} == 1)",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -561,7 +561,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_manifest_cache_age_seconds{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_manifest_cache_age_seconds{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -642,7 +642,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_records{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_records{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -710,7 +710,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_data_files{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_data_files{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -778,7 +778,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_files_size_bytes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_files_size_bytes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -846,7 +846,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_files_size_bytes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"} / clamp_min(iceberg_table_data_files{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}, 1)",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_files_size_bytes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"} / clamp_min(iceberg_table_data_files{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}, 1))",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -914,7 +914,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_position_deletes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_position_deletes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -982,7 +982,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_equality_deletes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_equality_deletes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -1058,7 +1058,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"8388608\"})",
+          "expr": "max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"8388608\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -1070,7 +1070,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"33554432\"}) - sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"8388608\"})",
+          "expr": "max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"33554432\"}) - max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"8388608\"})",
           "instant": true,
           "range": false,
           "refId": "B",
@@ -1082,7 +1082,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"134217728\"}) - sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"33554432\"})",
+          "expr": "max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"134217728\"}) - max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"33554432\"})",
           "instant": true,
           "range": false,
           "refId": "C",
@@ -1094,7 +1094,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"536870912\"}) - sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"134217728\"})",
+          "expr": "max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"536870912\"}) - max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"134217728\"})",
           "instant": true,
           "range": false,
           "refId": "D",
@@ -1106,7 +1106,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"1073741824\"}) - sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"536870912\"})",
+          "expr": "max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"1073741824\"}) - max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"536870912\"})",
           "instant": true,
           "range": false,
           "refId": "E",
@@ -1118,7 +1118,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"+Inf\"}) - sum(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"1073741824\"})",
+          "expr": "max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"+Inf\"}) - max(iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\",le=\"1073741824\"})",
           "instant": true,
           "range": false,
           "refId": "F",
@@ -1186,7 +1186,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.5, sum by (le) (iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}))",
+          "expr": "histogram_quantile(0.5, max by (le) (iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}))",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -1198,7 +1198,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}))",
+          "expr": "histogram_quantile(0.95, max by (le) (iceberg_table_file_size_bytes_bucket{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}))",
           "instant": false,
           "range": true,
           "refId": "B",
@@ -1270,7 +1270,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_small_files_ratio{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_small_files_ratio{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -1342,7 +1342,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_partition_skew_ratio{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partition_skew_ratio{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -1410,7 +1410,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_partition_bytes_max{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partition_bytes_max{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -1478,7 +1478,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_delete_file_bytes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table, content) (iceberg_table_delete_file_bytes{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -1550,7 +1550,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_manifest_cache_age_seconds{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"}",
+          "expr": "max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_manifest_cache_age_seconds{exported_namespace=\"$exported_namespace\",catalog=\"$catalog\",ref=\"$ref\",namespace=\"$namespace\",table=\"$table\"})",
           "instant": false,
           "range": true,
           "refId": "A",

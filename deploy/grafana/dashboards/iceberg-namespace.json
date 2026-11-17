@@ -111,7 +111,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})",
+          "expr": "count(max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}))",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -177,7 +177,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count(\n  ((iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == 1) or (iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",update_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",merge_mode=\"merge-on-read\"}) and on (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_position_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1) > 0.2) or (iceberg_table_equality_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0)))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=~\"copy-on-write|merge-on-read\",update_mode=~\"copy-on-write|merge-on-read\",merge_mode=~\"copy-on-write|merge-on-read\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"copy-on-write\",update_mode=\"copy-on-write\",merge_mode=\"copy-on-write\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\",update_mode=\"merge-on-read\",merge_mode=\"merge-on-read\"})) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or (((iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 67108864) or (iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 1073741824)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 8388608) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 536870912) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((((iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1)) < bool (0.25 * iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",distribution_mode=\"none\"} and on (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or (((iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 0.5) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10) * (iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} >= bool 10)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == bool 0) * (iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 107374182400)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10000) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n)",
+          "expr": "count(max by (exported_namespace, catalog, ref, namespace, table) (\n  ((iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == 1) or (iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",update_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",merge_mode=\"merge-on-read\"}) and on (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_position_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1) > 0.2) or (iceberg_table_equality_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0)))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=~\"copy-on-write|merge-on-read\",update_mode=~\"copy-on-write|merge-on-read\",merge_mode=~\"copy-on-write|merge-on-read\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"copy-on-write\",update_mode=\"copy-on-write\",merge_mode=\"copy-on-write\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\",update_mode=\"merge-on-read\",merge_mode=\"merge-on-read\"})) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or (((iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 67108864) or (iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 1073741824)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 8388608) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 536870912) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((((iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1)) < bool (0.25 * iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",distribution_mode=\"none\"} and on (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or (((iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 0.5) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10) * (iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} >= bool 10)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == bool 0) * (iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 107374182400)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10000) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n))",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -236,7 +236,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #bytes$|Value #avg$|Value #target$|Value #rowgroup$|Value #page$|Value #manifest$|Value #partmax$"
+              "options": "Trend #bytes$|Trend #avg$|Trend #target$|Trend #rowgroup$|Trend #page$|Trend #manifest$|Trend #partmax$"
             },
             "properties": [
               {
@@ -252,7 +252,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #records$|Value #files$|Value #fields$|Value #partitions$"
+              "options": "Trend #records$|Trend #files$|Trend #fields$|Trend #partitions$"
             },
             "properties": [
               {
@@ -268,7 +268,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #version$"
+              "options": "Trend #version$"
             },
             "properties": [
               {
@@ -309,7 +309,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #target$"
+              "options": "Trend #target$"
             },
             "properties": [
               {
@@ -350,7 +350,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #rowgroup$"
+              "options": "Trend #rowgroup$"
             },
             "properties": [
               {
@@ -436,7 +436,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #small$"
+              "options": "Trend #small$"
             },
             "properties": [
               {
@@ -481,7 +481,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #skew$"
+              "options": "Trend #skew$"
             },
             "properties": [
               {
@@ -522,7 +522,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #partitions$"
+              "options": "Trend #partitions$"
             },
             "properties": [
               {
@@ -559,7 +559,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #cache$"
+              "options": "Trend #cache$"
             },
             "properties": [
               {
@@ -604,7 +604,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #flag_v1$|Value #flag_mor$|Value #flag_target$|Value #flag_rowgroup$|Value #flag_small$|Value #flag_skew$"
+              "options": "Trend #flag_v1$|Trend #flag_mor$|Trend #flag_target$|Trend #flag_rowgroup$|Trend #flag_small$|Trend #flag_skew$"
             },
             "properties": [
               {
@@ -649,7 +649,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "Value #flag_modes$|Value #flag_avg$|Value #flag_dist$|Value #flag_unpart$|Value #flag_parts$"
+              "options": "Trend #flag_modes$|Trend #flag_avg$|Trend #flag_dist$|Trend #flag_unpart$|Trend #flag_parts$"
             },
             "properties": [
               {
@@ -724,8 +724,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id, catalog, ref, namespace, table) (label_join(label_join(label_join(iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "bytes"
@@ -736,8 +735,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "records"
@@ -748,8 +746,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "files"
@@ -760,8 +757,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "avg"
@@ -772,8 +768,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "version"
@@ -784,8 +779,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id, format, delete_mode, update_mode, merge_mode, distribution_mode, compression) (label_join(label_join(label_join(iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "config"
@@ -796,8 +790,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "target"
@@ -808,8 +801,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "rowgroup"
@@ -820,8 +812,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_parquet_page_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_parquet_page_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "page"
@@ -832,8 +823,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_manifest_target_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_manifest_target_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "manifest"
@@ -844,8 +834,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_partition_spec{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id, spec_id, transforms) (label_join(label_join(label_join(iceberg_table_partition_spec{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "spec"
@@ -856,8 +845,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "fields"
@@ -868,8 +856,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "partitions"
@@ -880,8 +867,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "skew"
@@ -892,8 +878,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_partition_bytes_max{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_partition_bytes_max{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "partmax"
@@ -904,8 +889,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "small"
@@ -916,8 +900,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_table_manifest_cache_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(iceberg_table_manifest_cache_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "cache"
@@ -928,8 +911,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "(iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == 1) or (iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join((iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == 1) or (iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_v1"
@@ -940,8 +922,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "(max by (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",update_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",merge_mode=\"merge-on-read\"}) and on (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_position_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1) > 0.2) or (iceberg_table_equality_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0)))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join((max by (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",update_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",merge_mode=\"merge-on-read\"}) and on (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_position_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1) > 0.2) or (iceberg_table_equality_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0)))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_mor"
@@ -952,8 +933,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "(max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=~\"copy-on-write|merge-on-read\",update_mode=~\"copy-on-write|merge-on-read\",merge_mode=~\"copy-on-write|merge-on-read\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"copy-on-write\",update_mode=\"copy-on-write\",merge_mode=\"copy-on-write\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\",update_mode=\"merge-on-read\",merge_mode=\"merge-on-read\"})) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join((max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=~\"copy-on-write|merge-on-read\",update_mode=~\"copy-on-write|merge-on-read\",merge_mode=~\"copy-on-write|merge-on-read\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"copy-on-write\",update_mode=\"copy-on-write\",merge_mode=\"copy-on-write\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\",update_mode=\"merge-on-read\",merge_mode=\"merge-on-read\"})) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_modes"
@@ -964,8 +944,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "((iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 67108864) or (iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 1073741824)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(((iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 67108864) or (iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 1073741824)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_target"
@@ -976,8 +955,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "((iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 8388608) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 536870912) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(((iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 8388608) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 536870912) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_rowgroup"
@@ -988,8 +966,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "(((iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1)) < bool (0.25 * iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join((((iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1)) < bool (0.25 * iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_avg"
@@ -1000,8 +977,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "(max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",distribution_mode=\"none\"} and on (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join((max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",distribution_mode=\"none\"} and on (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_dist"
@@ -1012,8 +988,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "((iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 0.5) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(((iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 0.5) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_small"
@@ -1024,8 +999,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "((iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10) * (iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} >= bool 10)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(((iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10) * (iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} >= bool 10)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_skew"
@@ -1036,8 +1010,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "((iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == bool 0) * (iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 107374182400)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join(((iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == bool 0) * (iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 107374182400)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_unpart"
@@ -1048,8 +1021,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "(iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10000) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
-          "format": "table",
+          "expr": "max by (row_id) (label_join(label_join(label_join((iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10000) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0), \"row_id\", \"/\", \"catalog\", \"ref\"), \"row_id\", \"/\", \"row_id\", \"namespace\"), \"row_id\", \"/\", \"row_id\", \"table\"))",
           "instant": true,
           "range": false,
           "refId": "flag_parts"
@@ -1058,15 +1030,21 @@
       "title": "Таблицы",
       "transformations": [
         {
+          "id": "timeSeriesTable",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(catalog|ref|namespace|table|row_id|format|delete_mode|update_mode|merge_mode|distribution_mode|compression|spec_id|transforms|Trend #.+)$"
+            }
+          }
+        },
+        {
           "id": "joinByField",
           "options": {
-            "byFields": [
-              "exported_namespace",
-              "catalog",
-              "ref",
-              "namespace",
-              "table"
-            ],
+            "byField": "row_id",
             "mode": "outer"
           }
         },
@@ -1075,36 +1053,37 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "Value #config": true,
-              "Value #spec": true
+              "Trend #config": true,
+              "Trend #spec": true,
+              "row_id": true
             },
             "renameByName": {
-              "Value #bytes": "байты",
-              "Value #records": "records",
-              "Value #files": "файлы",
-              "Value #avg": "средний файл",
-              "Value #version": "format version",
-              "Value #target": "target file",
-              "Value #rowgroup": "row group",
-              "Value #page": "page",
-              "Value #manifest": "manifest target",
-              "Value #fields": "поля spec",
-              "Value #partitions": "партиции",
-              "Value #skew": "skew",
-              "Value #partmax": "max партиция",
-              "Value #small": "доля мелких",
-              "Value #cache": "возраст кэша",
-              "Value #flag_v1": "v1",
-              "Value #flag_mor": "mor и deletes",
-              "Value #flag_modes": "режимы различаются",
-              "Value #flag_target": "target вне диапазона",
-              "Value #flag_rowgroup": "row group вне",
-              "Value #flag_avg": "файл меньше target",
-              "Value #flag_dist": "distribution none",
-              "Value #flag_small": "много мелких",
-              "Value #flag_skew": "флаг skew",
-              "Value #flag_unpart": "без партиций",
-              "Value #flag_parts": "много партиций",
+              "Trend #bytes": "байты",
+              "Trend #records": "records",
+              "Trend #files": "файлы",
+              "Trend #avg": "средний файл",
+              "Trend #version": "format version",
+              "Trend #target": "target file",
+              "Trend #rowgroup": "row group",
+              "Trend #page": "page",
+              "Trend #manifest": "manifest target",
+              "Trend #fields": "поля spec",
+              "Trend #partitions": "партиции",
+              "Trend #skew": "skew",
+              "Trend #partmax": "max партиция",
+              "Trend #small": "доля мелких",
+              "Trend #cache": "возраст кэша",
+              "Trend #flag_v1": "v1",
+              "Trend #flag_mor": "mor и deletes",
+              "Trend #flag_modes": "режимы различаются",
+              "Trend #flag_target": "target вне диапазона",
+              "Trend #flag_rowgroup": "row group вне",
+              "Trend #flag_avg": "файл меньше target",
+              "Trend #flag_dist": "distribution none",
+              "Trend #flag_small": "много мелких",
+              "Trend #flag_skew": "флаг skew",
+              "Trend #flag_unpart": "без партиций",
+              "Trend #flag_parts": "много партиций",
               "delete_mode": "delete",
               "update_mode": "update",
               "merge_mode": "merge",

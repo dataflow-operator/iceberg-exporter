@@ -193,6 +193,11 @@ func TestGrafanaDashboards(t *testing.T) {
 	if !strings.Contains(catalogExpr, "sum_over_time(iceberg_catalog_commits_since_scrape") {
 		t.Fatal("catalog dashboard does not sum commits over 1h")
 	}
+	for _, expr := range exprs(catalog) {
+		if !strings.Contains(expr, "max by (") {
+			t.Fatalf("catalog series are not collapsed: %s", expr)
+		}
+	}
 	if strings.Contains(catalogExpr, "rate(") {
 		t.Fatal("catalog dashboard uses rate()")
 	}
@@ -216,8 +221,29 @@ func TestGrafanaDashboards(t *testing.T) {
 	if strings.Contains(healthExpr, "histogram_quantile") {
 		t.Fatal("table health dashboard quantiles every table")
 	}
-	if !strings.Contains(healthExpr, "topk(20, iceberg_table_snapshot_age_seconds") {
+	if !strings.Contains(healthExpr, "topk(20, max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_snapshot_age_seconds") {
 		t.Fatal("snapshot age is not topk")
+	}
+	for _, expr := range exprs(health) {
+		switch {
+		case strings.Contains(expr, "sum by (content)"):
+			if !strings.Contains(expr, "max by (exported_namespace, catalog, ref, namespace, table, content)") {
+				t.Fatalf("manifest content sum counts replicas: %s", expr)
+			}
+		case strings.Contains(expr, "iceberg_ref_tables_diverged"):
+			if !strings.Contains(expr, "max by (exported_namespace, catalog, ref, base_ref)") {
+				t.Fatalf("diverged series are not collapsed: %s", expr)
+			}
+		case strings.Contains(expr, "count by (operation)"):
+			if !strings.Contains(expr, "max by (exported_namespace, catalog, ref, namespace, table, operation)") {
+				t.Fatalf("operation count is not collapsed: %s", expr)
+			}
+		case strings.Contains(expr, "sum by (exported_namespace, catalog, ref, namespace, table)"):
+		default:
+			if !strings.Contains(expr, "max by (exported_namespace, catalog, ref, namespace, table)") {
+				t.Fatalf("health series are not collapsed: %s", expr)
+			}
+		}
 	}
 	for _, piece := range []string{
 		"iceberg_table_files_size_bytes",
@@ -252,6 +278,9 @@ func TestGrafanaDashboards(t *testing.T) {
 	for _, expr := range exprs(table) {
 		if strings.Contains(expr, "histogram_quantile(") && !strings.Contains(expr, `table="$table"`) {
 			t.Fatalf("quantile is not restricted to the selected table: %s", expr)
+		}
+		if !strings.Contains(expr, "max by (") && !strings.Contains(expr, "max(") {
+			t.Fatalf("table series are not collapsed: %s", expr)
 		}
 	}
 	for _, piece := range []string{
@@ -325,6 +354,56 @@ func TestGrafanaDashboards(t *testing.T) {
 	if list.Type != "table" {
 		t.Fatalf("tables panel type %s", list.Type)
 	}
+	for _, target := range list.Targets {
+		if target.Format != "" {
+			t.Fatalf("tables panel query format %q duplicates label columns", target.Format)
+		}
+	}
+	var ids []string
+	var filter, join string
+	for _, tr := range list.Transformations {
+		ids = append(ids, tr.ID)
+		switch tr.ID {
+		case "filterFieldsByName":
+			filter = string(tr.Options)
+		case "joinByField":
+			join = string(tr.Options)
+		}
+	}
+	if strings.Join(ids, ",") != "timeSeriesTable,filterFieldsByName,joinByField,organize" {
+		t.Fatalf("tables panel transformations = %v", ids)
+	}
+	for _, label := range []string{"catalog", "ref", "namespace", "table", "row_id", "delete_mode", "transforms"} {
+		if !strings.Contains(filter, label) {
+			t.Fatalf("tables panel keeps no %s column", label)
+		}
+	}
+	for _, label := range []string{"pod", "job", "instance", "__name__"} {
+		if strings.Contains(filter, label) {
+			t.Fatalf("tables panel keeps infra label %s", label)
+		}
+	}
+	if !strings.Contains(join, `"byField"`) || !strings.Contains(join, `row_id`) {
+		t.Fatalf("tables panel joins on %s", join)
+	}
+	keptLabels := 0
+	for _, target := range list.Targets {
+		if !strings.Contains(target.Expr, `label_join`) || !strings.Contains(target.Expr, `"row_id"`) || !strings.Contains(target.Expr, "max by (row_id") {
+			t.Fatalf("tables panel query does not collapse labels: %s", target.RefID)
+		}
+		if strings.Contains(target.Expr, "max by (row_id, catalog, ref, namespace, table)") {
+			keptLabels++
+		}
+	}
+	if keptLabels != 1 {
+		t.Fatalf("want one query to keep table labels, got %d", keptLabels)
+	}
+	for _, title := range []string{"Число таблиц", "С замечаниями"} {
+		expr := namespace.panelByTitle(t, title).Targets[0].Expr
+		if !strings.Contains(expr, "count(max by (exported_namespace, catalog, ref, namespace, table)") {
+			t.Fatalf("%s counts replicas: %s", title, expr)
+		}
+	}
 }
 
 func assertAlert(t *testing.T, rules map[string]rule, name, severity, forDur string) {
@@ -394,7 +473,12 @@ type dashPanel struct {
 	Targets []struct {
 		Expr   string `json:"expr"`
 		Format string `json:"format"`
+		RefID  string `json:"refId"`
 	} `json:"targets"`
+	Transformations []struct {
+		ID      string          `json:"id"`
+		Options json.RawMessage `json:"options"`
+	} `json:"transformations"`
 	Panels []dashPanel `json:"panels"`
 }
 

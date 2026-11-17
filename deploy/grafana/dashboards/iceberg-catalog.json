@@ -127,7 +127,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_catalog_up{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\"}",
+          "expr": "max by (exported_namespace, catalog, type) (iceberg_catalog_up{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -193,7 +193,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max(iceberg_catalog_list_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
+          "expr": "max by (exported_namespace, catalog, ref) (iceberg_catalog_list_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -255,7 +255,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_catalog_ref_head_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}",
+          "expr": "max by (exported_namespace, catalog, ref) (iceberg_catalog_ref_head_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -317,7 +317,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_exporter_manifest_queue{exported_namespace=~\"$exported_namespace\"}",
+          "expr": "max by (exported_namespace) (iceberg_exporter_manifest_queue{exported_namespace=~\"$exported_namespace\"})",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -383,7 +383,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count by (catalog, ref) (max by (catalog, ref, namespace, table) (iceberg_table_scrape_error{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}) == 1) / clamp_min(sum by (catalog, ref) (iceberg_tables{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}), 1)",
+          "expr": "count by (exported_namespace, catalog, ref) (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_scrape_error{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}) == 1) / clamp_min(max by (exported_namespace, catalog, ref) (iceberg_tables{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}), 1)",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -464,7 +464,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_catalog_ref_head_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}",
+          "expr": "max by (exported_namespace, catalog, ref) (iceberg_catalog_ref_head_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -476,7 +476,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_catalog_list_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}",
+          "expr": "max by (exported_namespace, catalog, ref) (iceberg_catalog_list_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
           "instant": false,
           "range": true,
           "refId": "B",
@@ -544,7 +544,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (catalog, ref) (sum_over_time(iceberg_catalog_commits_since_scrape{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}[1h]))",
+          "expr": "max by (exported_namespace, catalog, ref) (sum_over_time(iceberg_catalog_commits_since_scrape{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}[1h]))",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -625,7 +625,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_tables{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}",
+          "expr": "max by (exported_namespace, catalog, ref) (iceberg_tables{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -637,7 +637,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_views{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}",
+          "expr": "max by (exported_namespace, catalog, ref) (iceberg_views{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
           "instant": false,
           "range": true,
           "refId": "B",
@@ -649,7 +649,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_namespaces{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}",
+          "expr": "max by (exported_namespace, catalog, ref) (iceberg_namespaces{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
           "instant": false,
           "range": true,
           "refId": "C",
@@ -717,7 +717,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_ref_tables_diverged{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}",
+          "expr": "max by (exported_namespace, catalog, ref, base_ref) (iceberg_ref_tables_diverged{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -798,7 +798,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "iceberg_exporter_manifest_queue{exported_namespace=~\"$exported_namespace\"}",
+          "expr": "max by (exported_namespace) (iceberg_exporter_manifest_queue{exported_namespace=~\"$exported_namespace\"})",
           "instant": false,
           "range": true,
           "refId": "A",
@@ -870,7 +870,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count by (catalog, ref) (max by (catalog, ref, namespace, table) (iceberg_table_scrape_error{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}) == 1) / clamp_min(sum by (catalog, ref) (iceberg_tables{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}), 1)",
+          "expr": "count by (exported_namespace, catalog, ref) (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_scrape_error{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}) == 1) / clamp_min(max by (exported_namespace, catalog, ref) (iceberg_tables{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}), 1)",
           "instant": false,
           "range": true,
           "refId": "A",

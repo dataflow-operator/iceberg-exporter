@@ -48,7 +48,7 @@ File-level правила умножаются на возраст per-table к�
 - `iceberg_tables`, `iceberg_views`, `iceberg_namespaces`
 - `iceberg_ref_tables_diverged` относительно base ref
 - `iceberg_exporter_manifest_queue`
-- доля таблиц с ошибкой: `count(max by (catalog, ref, namespace, table) (iceberg_table_scrape_error) == 1) / iceberg_tables`
+- доля таблиц с ошибкой: `count by (exported_namespace, catalog, ref) (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_scrape_error) == 1) / max by (exported_namespace, catalog, ref) (iceberg_tables)`
 
 | Алерт | Severity | For | Условие |
 | --- | --- | --- | --- |
@@ -63,11 +63,11 @@ File-level правила умножаются на возраст per-table к�
 
 ## Здоровье таблиц
 
-Дашборд [iceberg-table-health.json](../deploy/grafana/dashboards/iceberg-table-health.json), uid `iceberg-table-health`, заголовок «Iceberg: здоровье таблиц». Сортировка `topk(20, ...)`, не график всех серий. `histogram_quantile` на этом дашборде нет.
+Дашборд [iceberg-table-health.json](../deploy/grafana/dashboards/iceberg-table-health.json), uid `iceberg-table-health`, заголовок «Iceberg: здоровье таблиц». Сортировка `topk(20, ...)`, не график всех серий. `histogram_quantile` на этом дашборде нет. Перед `topk` и `count` серии одной таблицы схлопываются `max by (exported_namespace, catalog, ref, namespace, table)`, чтобы несколько scrape не рисовали её дважды. `ref` остаётся отдельной серией.
 
 Панели:
 
-- возраст snapshot: `topk(20, iceberg_table_snapshot_age_seconds)`
+- возраст snapshot: `topk(20, max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_snapshot_age_seconds))`
 - records, data files, байты и их `delta(...[24h])`
 - средний размер файла из формулы выше
 - delete pressure: `iceberg_table_position_deletes / clamp_min(iceberg_table_records, 1)` и `iceberg_table_delete_files / clamp_min(iceberg_table_data_files, 1)`. Equality deletes — отдельная панель, универсального порога у них нет
