@@ -87,8 +87,8 @@ scrape_configs:
 
 - `/metrics` — кэш каталога и таблиц
 - [docs/metrics.md](docs/metrics.md) — имя, тип, labels и источник каждой серии
-- [docs/alerts.md](docs/alerts.md) — три дашборда и правила
-- [deploy/grafana/dashboards/](deploy/grafana/dashboards/) — JSON: каталог, здоровье таблиц, одна таблица
+- [docs/alerts.md](docs/alerts.md) — четыре дашборда и правила
+- [deploy/grafana/dashboards/](deploy/grafana/dashboards/) — JSON: каталог, здоровье таблиц, одна таблица, настройки таблиц
 - [deploy/prometheus/iceberg.rules.yaml](deploy/prometheus/iceberg.rules.yaml) — recording rules и алерты
 
 Переменная `ref` на дашбордах по умолчанию `main`.

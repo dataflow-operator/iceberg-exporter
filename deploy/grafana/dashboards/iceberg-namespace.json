@@ -1,0 +1,1238 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Список таблиц выбранного exported_namespace: размер и свойства записи из metadata JSON. Подсветка — подсказка, не алерт.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Каталог",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/iceberg-catalog"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Здоровье таблиц",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/iceberg-table-health"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Таблица",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/iceberg-table"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Число таблиц в текущей выборке.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "count(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Число таблиц",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Таблицы, у которых хотя бы один флаг равен 1. Пороги описаны на панели списка.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "count(\n  ((iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == 1) or (iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",update_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",merge_mode=\"merge-on-read\"}) and on (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_position_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1) > 0.2) or (iceberg_table_equality_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0)))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=~\"copy-on-write|merge-on-read\",update_mode=~\"copy-on-write|merge-on-read\",merge_mode=~\"copy-on-write|merge-on-read\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"copy-on-write\",update_mode=\"copy-on-write\",merge_mode=\"copy-on-write\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\",update_mode=\"merge-on-read\",merge_mode=\"merge-on-read\"})) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or (((iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 67108864) or (iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 1073741824)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 8388608) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 536870912) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((((iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1)) < bool (0.25 * iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",distribution_mode=\"none\"} and on (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0) == 1)\n  or (((iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 0.5) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10) * (iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} >= bool 10)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or (((iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == bool 0) * (iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 107374182400)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n  or ((iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10000) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0) == 1)\n)",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "С замечаниями",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Свойства взяты из metadata JSON. Пустая ячейка размера значит, что ключ не задан: дефолт движка сюда не подставляется. Сессионный конфиг Spark или Flink экспортер не видит. Партиции, skew, доля мелких файлов и возраст кэша читаются из file-level кэша. Флаги — подсказки, отдельных алертов по ним нет. v1 — format version 1. mor и deletes — merge-on-read и position deletes / records > 0.2 или equality deletes > 0. режимы различаются — delete, update и merge все заданы и не совпадают. target вне диапазона — target file size задан и меньше 64 MiB или больше 1 GiB. row group вне — row group меньше 8 MiB, больше 512 MiB или больше target file size. файл меньше target — средний файл меньше 25% target при data files > 100. distribution none — distribution-mode none и в spec есть поля. много мелких — small files ratio > 0.5 и data files > 100. флаг skew — skew > 10 и партиций >= 10. без партиций — spec без полей и размер больше 100 GiB. много партиций — больше 10000.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^table$"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Таблица",
+                    "url": "/d/iceberg-table?${__url_time_range}&var-exported_namespace=${__data.fields.exported_namespace}&var-catalog=${__data.fields.catalog}&var-ref=${__data.fields.ref}&var-namespace=${__data.fields.namespace}&var-table=${__data.fields.table}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #bytes$|Value #avg$|Value #target$|Value #rowgroup$|Value #page$|Value #manifest$|Value #partmax$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #records$|Value #files$|Value #fields$|Value #partitions$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #version$"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 2
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #target$"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 67108864
+                    },
+                    {
+                      "color": "red",
+                      "value": 1073741825
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #rowgroup$"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 8388608
+                    },
+                    {
+                      "color": "red",
+                      "value": 536870913
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "delete_mode$|update_mode$|merge_mode$"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "merge-on-read": {
+                        "text": "merge-on-read",
+                        "color": "yellow",
+                        "index": 0
+                      },
+                      "copy-on-write": {
+                        "text": "copy-on-write",
+                        "color": "green",
+                        "index": 1
+                      },
+                      "unset": {
+                        "text": "не задано",
+                        "color": "text",
+                        "index": 2
+                      },
+                      "other": {
+                        "text": "other",
+                        "color": "orange",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #small$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #skew$"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #partitions$"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #cache$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 7200
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #flag_v1$|Value #flag_mor$|Value #flag_target$|Value #flag_rowgroup$|Value #flag_small$|Value #flag_skew$"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Value #flag_modes$|Value #flag_avg$|Value #flag_dist$|Value #flag_unpart$|Value #flag_parts$"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 28,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "table"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "bytes"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "records"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "files"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "avg"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "version"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "config"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "target"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "rowgroup"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_parquet_page_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "page"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_manifest_target_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "manifest"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_partition_spec{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "spec"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "fields"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "partitions"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "skew"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_partition_bytes_max{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "partmax"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "small"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "iceberg_table_manifest_cache_age_seconds{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "cache"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == 1) or (iceberg_table_format_version{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_v1"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(max by (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",update_mode=\"merge-on-read\"} or iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",merge_mode=\"merge-on-read\"}) and on (exported_namespace, catalog, ref, namespace, table) ((iceberg_table_position_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1) > 0.2) or (iceberg_table_equality_deletes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0)))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_mor"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=~\"copy-on-write|merge-on-read\",update_mode=~\"copy-on-write|merge-on-read\",merge_mode=~\"copy-on-write|merge-on-read\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"copy-on-write\",update_mode=\"copy-on-write\",merge_mode=\"copy-on-write\"} unless iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",delete_mode=\"merge-on-read\",update_mode=\"merge-on-read\",merge_mode=\"merge-on-read\"})) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_modes"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "((iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 67108864) or (iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 1073741824)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_target"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "((iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} < bool 8388608) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 536870912) or (iceberg_table_parquet_row_group_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_rowgroup"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(((iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} / clamp_min(iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}, 1)) < bool (0.25 * iceberg_table_write_target_file_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"})) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_avg"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\",distribution_mode=\"none\"} and on (exported_namespace, catalog, ref, namespace, table) (iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > 0))) or (max by (exported_namespace, catalog, ref, namespace, table) (iceberg_table_write_config{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"}) * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_dist"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "((iceberg_table_small_files_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 0.5) * (iceberg_table_data_files{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 100)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_small"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "((iceberg_table_partition_skew_ratio{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10) * (iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} >= bool 10)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_skew"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "((iceberg_table_partition_fields{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} == bool 0) * (iceberg_table_files_size_bytes{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 107374182400)) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_unpart"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(iceberg_table_partitions{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} > bool 10000) or (iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\",namespace=~\"$namespace\"} * 0)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "flag_parts"
+        }
+      ],
+      "title": "Таблицы",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byFields": [
+              "exported_namespace",
+              "catalog",
+              "ref",
+              "namespace",
+              "table"
+            ],
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value #config": true,
+              "Value #spec": true
+            },
+            "renameByName": {
+              "Value #bytes": "байты",
+              "Value #records": "records",
+              "Value #files": "файлы",
+              "Value #avg": "средний файл",
+              "Value #version": "format version",
+              "Value #target": "target file",
+              "Value #rowgroup": "row group",
+              "Value #page": "page",
+              "Value #manifest": "manifest target",
+              "Value #fields": "поля spec",
+              "Value #partitions": "партиции",
+              "Value #skew": "skew",
+              "Value #partmax": "max партиция",
+              "Value #small": "доля мелких",
+              "Value #cache": "возраст кэша",
+              "Value #flag_v1": "v1",
+              "Value #flag_mor": "mor и deletes",
+              "Value #flag_modes": "режимы различаются",
+              "Value #flag_target": "target вне диапазона",
+              "Value #flag_rowgroup": "row group вне",
+              "Value #flag_avg": "файл меньше target",
+              "Value #flag_dist": "distribution none",
+              "Value #flag_small": "много мелких",
+              "Value #flag_skew": "флаг skew",
+              "Value #flag_unpart": "без партиций",
+              "Value #flag_parts": "много партиций",
+              "delete_mode": "delete",
+              "update_mode": "update",
+              "merge_mode": "merge",
+              "distribution_mode": "distribution",
+              "compression": "codec"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "iceberg"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Prometheus",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values({__name__=~\"iceberg_catalog_up|iceberg_table_records\"}, exported_namespace)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "exported_namespace",
+        "multi": true,
+        "name": "exported_namespace",
+        "options": [],
+        "query": "label_values({__name__=~\"iceberg_catalog_up|iceberg_table_records\"}, exported_namespace)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values({__name__=~\"iceberg_catalog_up|iceberg_table_records\",exported_namespace=~\"$exported_namespace\"}, catalog)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "catalog",
+        "multi": true,
+        "name": "catalog",
+        "options": [],
+        "query": "label_values({__name__=~\"iceberg_catalog_up|iceberg_table_records\",exported_namespace=~\"$exported_namespace\"}, catalog)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "main",
+          "value": "main"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values({__name__=~\"iceberg_catalog_ref_head_age_seconds|iceberg_table_records\",exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\"}, ref)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "ref",
+        "multi": true,
+        "name": "ref",
+        "options": [],
+        "query": "label_values({__name__=~\"iceberg_catalog_ref_head_age_seconds|iceberg_table_records\",exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\"}, ref)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}, namespace)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "namespace",
+        "multi": true,
+        "name": "namespace",
+        "options": [],
+        "query": "label_values(iceberg_table_records{exported_namespace=~\"$exported_namespace\",catalog=~\"$catalog\",ref=~\"$ref\"}, namespace)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Iceberg: настройки таблиц",
+  "uid": "iceberg-namespace",
+  "version": 1
+}

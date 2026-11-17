@@ -102,6 +102,7 @@ func TestDocsMatchExporter(t *testing.T) {
 		"iceberg-catalog.json",
 		"iceberg-table-health.json",
 		"iceberg-table.json",
+		"iceberg-namespace.json",
 		"iceberg.rules.yaml",
 		"ScanReport",
 	} {

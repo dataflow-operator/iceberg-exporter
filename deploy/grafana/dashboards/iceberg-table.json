@@ -43,6 +43,18 @@
       "tooltip": "",
       "type": "link",
       "url": "/d/iceberg-table-health"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Настройки таблиц",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/iceberg-namespace"
     }
   ],
   "panels": [

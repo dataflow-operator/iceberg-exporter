@@ -61,6 +61,34 @@ Labels таблиц: `catalog`, `ref`, `namespace`, `table`. `catalog` — им�
 - `manifest_list` — публикуется после успешного metadata или когда упал только manifest list. Падение list сохраняет gauge metadata.
 - `manifest_entries` — публикуется после попытки file-level скана. Падение entries сохраняет gauge metadata и manifest list.
 
+## Свойства таблицы
+
+Источник — `properties` и текущий partition spec в metadata JSON. Серии есть после успешного разбора metadata и не ждут manifest list. Ключ, которого нет в JSON, не заменяется дефолтом спецификации: Spark и iceberg-go расходятся, а сессионный конфиг движка в metadata не записан.
+
+`iceberg_table_write_config` равен 1. Дополнительные labels:
+
+| Label | Ключ | Значения |
+| --- | --- | --- |
+| `format` | `write.format.default` | `parquet`, `avro`, `orc`, `unset`, `other` |
+| `delete_mode` | `write.delete.mode` | `copy-on-write`, `merge-on-read`, `unset`, `other` |
+| `update_mode` | `write.update.mode` | те же, что у delete |
+| `merge_mode` | `write.merge.mode` | те же, что у delete |
+| `distribution_mode` | `write.distribution-mode` | `none`, `hash`, `range`, `unset`, `other` |
+| `compression` | `write.parquet.compression-codec` | `zstd`, `snappy`, `gzip`, `lz4`, `uncompressed`, `brotli`, `lzo`, `none`, `unset`, `other` |
+
+`unset` — ключа нет или значение пустое. `other` — значение вне списка, чтобы произвольная строка не попадала в label.
+
+Gauge ниже публикуется только если свойство задано и это целое больше нуля. Ноль, отрицательное и нечисловое значение серию не создают и разбор таблицы не роняют.
+
+| Серия | Ключ |
+| --- | --- |
+| `iceberg_table_write_target_file_size_bytes` | `write.target-file-size-bytes` |
+| `iceberg_table_parquet_row_group_size_bytes` | `write.parquet.row-group-size-bytes` |
+| `iceberg_table_parquet_page_size_bytes` | `write.parquet.page-size-bytes` |
+| `iceberg_table_manifest_target_size_bytes` | `commit.manifest.target-size-bytes` |
+
+`iceberg_table_partition_fields` — число полей текущего partition spec, 0 если полей нет. `iceberg_table_partition_spec` равен 1. Label `spec_id` — id текущего spec. Label `transforms` — transform полей по порядку, без имён колонок (`day,bucket[16]`). У spec без полей значение `none`. Больше 8 полей обрезаются, хвост помечается `+`. Transform вне шаблона `name` или `name[n]` записывается как `other`.
+
 Средний размер data file считается из summary и не ждёт манифесты:
 
 ```promql

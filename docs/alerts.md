@@ -2,7 +2,7 @@
 
 Пороги живут в Prometheus rules, не в экспортере: свежесть стриминговой таблицы и суточного батча разная. JSON дашбордов лежит в [deploy/grafana/dashboards/](../deploy/grafana/dashboards/), правила — в [deploy/prometheus/iceberg.rules.yaml](../deploy/prometheus/iceberg.rules.yaml). Имена серий и смысл кэша описаны в [metrics.md](metrics.md).
 
-На всех трёх дашбордах переменная `ref` по умолчанию `main`, чтобы feature-ветки не занимали top-N. Job target `up` называется `iceberg-exporter`.
+На всех дашбордах переменная `ref` по умолчанию `main`, чтобы feature-ветки не занимали top-N. Job target `up` называется `iceberg-exporter`.
 
 Две recording rule должны совпадать с тем, как запущен процесс:
 
@@ -106,6 +106,27 @@ File-level блок подписан как кэш:
 | `IcebergTableSmallFiles` | warning | 6h | `iceberg_table_small_files_ratio > 0.5` и `iceberg_table_data_files > 100`, пока `iceberg_table_manifest_cache_age_seconds` меньше `iceberg_rules:manifest_cache_fresh_seconds`. Порог 32 MiB зашит в расчёт серии |
 | `IcebergTablePartitionSkew` | warning | 1h | `iceberg_table_partition_skew_ratio > 10` и `iceberg_table_partitions >= 10` при том же свежем кэше. На двух партициях ratio шумит и в правило не входит |
 | `IcebergTableManifestCacheStale` | warning | 30m | `iceberg_table_manifest_cache_age_seconds` больше двух интервалов скана. Это алерт на экспортер: гистограмма и skew в это время продолжают отдаваться из памяти |
+
+## Настройки таблиц
+
+Дашборд [iceberg-namespace.json](../deploy/grafana/dashboards/iceberg-namespace.json), uid `iceberg-namespace`, заголовок «Iceberg: настройки таблиц». Переменные `exported_namespace`, `catalog`, `ref` и Iceberg `namespace`. `namespace` по умолчанию All. Это список таблиц, а не график: размер, свойства записи и флаги.
+
+Свойства читаются из metadata JSON. Пустая ячейка размера значит, что ключ не задан. Дефолт спецификации и сессионный конфиг движка на дашборд не попадают. Партиции, skew, доля мелких файлов и возраст кэша — file-level кэш.
+
+Отдельных алертов по этим флагам нет. Цвет на дашборде:
+
+- format version 1 — красный
+- `merge-on-read` — жёлтый. Красный флаг, если при этом `position_deletes / records > 0.2` или `equality_deletes > 0`
+- delete, update и merge все заданы и не совпадают — жёлтый флаг
+- target file size задан и меньше 64 MiB или больше 1 GiB — красный
+- row group меньше 8 MiB, больше 512 MiB или больше target file size — красный флаг
+- средний файл меньше 25% target при `data_files > 100` — жёлтый
+- `distribution_mode=none` при ненулевом числе полей spec — жёлтый
+- `small_files_ratio > 0.5` при `data_files > 100` и skew `> 10` при `partitions >= 10` — красные флаги, те же пороги, что у warning-алертов file-level
+- spec без полей и размер больше 100 GiB — жёлтый
+- `iceberg_table_partitions > 10000` — жёлтый
+
+Имя таблицы ведёт на дашборд одной таблицы.
 
 ## Чего этими правилами не поймать
 

@@ -165,11 +165,12 @@ func TestGrafanaDashboards(t *testing.T) {
 	catalog := loadDashboard(t, filepath.Join(dir, "iceberg-catalog.json"))
 	health := loadDashboard(t, filepath.Join(dir, "iceberg-table-health.json"))
 	table := loadDashboard(t, filepath.Join(dir, "iceberg-table.json"))
+	namespace := loadDashboard(t, filepath.Join(dir, "iceberg-namespace.json"))
 
-	if catalog.UID != "iceberg-catalog" || health.UID != "iceberg-table-health" || table.UID != "iceberg-table" {
-		t.Fatalf("uids: %s %s %s", catalog.UID, health.UID, table.UID)
+	if catalog.UID != "iceberg-catalog" || health.UID != "iceberg-table-health" || table.UID != "iceberg-table" || namespace.UID != "iceberg-namespace" {
+		t.Fatalf("uids: %s %s %s %s", catalog.UID, health.UID, table.UID, namespace.UID)
 	}
-	for _, dash := range []dashboard{catalog, health, table} {
+	for _, dash := range []dashboard{catalog, health, table, namespace} {
 		ref := variable(t, dash, "ref")
 		if ref.Current.Value != "main" {
 			t.Fatalf("%s ref default = %#v", dash.UID, ref.Current)
@@ -283,6 +284,46 @@ func TestGrafanaDashboards(t *testing.T) {
 	}
 	if table.panelByTitle(t, "Возраст кэша manifest entries").GridPos.Y <= table.panelByTitle(t, "Доля мелких файлов").GridPos.Y {
 		t.Fatal("cache age panel is not next to the file-level panels")
+	}
+
+	if namespace.Title != "Iceberg: настройки таблиц" {
+		t.Fatalf("namespace title %q", namespace.Title)
+	}
+	if !variable(t, namespace, "namespace").Multi || !variable(t, namespace, "exported_namespace").Multi {
+		t.Fatal("namespace dashboard filters are not multi")
+	}
+	nsExpr := strings.Join(exprs(namespace), "\n")
+	if strings.Contains(nsExpr, "rate(") {
+		t.Fatal("namespace dashboard uses rate()")
+	}
+	for _, piece := range []string{
+		"iceberg_table_write_config",
+		"iceberg_table_write_target_file_size_bytes",
+		"iceberg_table_parquet_row_group_size_bytes",
+		"iceberg_table_parquet_page_size_bytes",
+		"iceberg_table_manifest_target_size_bytes",
+		"iceberg_table_partition_fields",
+		"iceberg_table_partition_spec",
+		"clamp_min(iceberg_table_data_files",
+		"iceberg_table_small_files_ratio",
+		"iceberg_table_partition_skew_ratio",
+		"iceberg_table_manifest_cache_age_seconds",
+		`delete_mode="merge-on-read"`,
+		"67108864",
+		"1073741824",
+		"8388608",
+		"536870912",
+		"107374182400",
+		"> bool 10000",
+		`namespace=~"$namespace"`,
+	} {
+		if !strings.Contains(nsExpr, piece) {
+			t.Fatalf("namespace dashboard missing %s", piece)
+		}
+	}
+	list := namespace.panelByTitle(t, "Таблицы")
+	if list.Type != "table" {
+		t.Fatalf("tables panel type %s", list.Type)
 	}
 }
 
