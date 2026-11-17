@@ -122,10 +122,10 @@ func TestHandlerEmptyBeforeRefresh(t *testing.T) {
 	}
 	exp := newExp(t, Config{}, cat)
 	rec := scrape(t, exp)
-	if rec.Code != http.StatusOK {
+	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status %d", rec.Code)
 	}
-	if rec.Body.Len() != 0 {
+	if !strings.Contains(rec.Body.String(), "not ready") {
 		t.Fatalf("body %q", rec.Body.String())
 	}
 }

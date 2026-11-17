@@ -443,14 +443,15 @@ func (e *Exporter) publish() {
 
 // Handler is GET /metrics. It writes the last rendered exposition and does not
 // probe the catalog, read the warehouse, or gather metrics. Before the first
-// successful refresh the body is empty.
+// successful refresh it returns 503 with an empty body. A 200 with no series
+// would mark the previous scrape stale.
 func (e *Exporter) Handler() http.Handler {
 	e.handlerOnce.Do(func() {
 		e.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", string(expfmt.FmtText))
 			body := e.exposition.Load()
 			if body == nil {
-				w.WriteHeader(http.StatusOK)
+				http.Error(w, "metrics are not ready\n", http.StatusServiceUnavailable)
 				return
 			}
 			if _, err := w.Write(body.body); err != nil {

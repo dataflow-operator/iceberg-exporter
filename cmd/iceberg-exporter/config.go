@@ -11,21 +11,25 @@ import (
 )
 
 type config struct {
-	CatalogName      string
-	NessieURL        string
-	NessieToken      string
-	Refs             []catalog.Ref
-	BaseRef          string
-	Listen           string
-	Interval         time.Duration
-	Refresh          time.Duration
-	Deletes          bool
-	Namespaces       catalog.NamespaceSelector
-	PageSize         int
-	EntryConcurrency int
-	EntryMaxQueue    int
-	EntryMaxBytes    int64
-	Storage          storage.Config
+	CatalogName       string
+	NessieURL         string
+	NessieToken       string
+	Refs              []catalog.Ref
+	BaseRef           string
+	Listen            string
+	Interval          time.Duration
+	Refresh           time.Duration
+	Deletes           bool
+	Namespaces        catalog.NamespaceSelector
+	PageSize          int
+	EntryConcurrency  int
+	EntryMaxQueue     int
+	EntryMaxBytes     int64
+	KeycloakURL       string
+	OAuthClientID     string
+	OAuthClientSecret string
+	TokenRefresh      time.Duration
+	Storage           storage.Config
 }
 
 func loadConfig(environ []string) (config, error) {
@@ -58,6 +62,26 @@ func loadConfig(environ []string) (config, error) {
 		return config{}, fmt.Errorf("NESSIE_URL is required")
 	}
 	cfg.NessieToken = strings.TrimSpace(env["NESSIE_TOKEN"])
+	var err error
+	cfg.KeycloakURL = strings.TrimSpace(env["KEYCLOAK_TOKEN_URL"])
+	if cfg.KeycloakURL != "" || strings.TrimSpace(env["OAUTH_CREDENTIALS"]) != "" {
+		if cfg.KeycloakURL == "" {
+			return config{}, fmt.Errorf("KEYCLOAK_TOKEN_URL is required")
+		}
+		cfg.OAuthClientID, cfg.OAuthClientSecret, err = parseOAuthCredentials(env["OAUTH_CREDENTIALS"])
+		if err != nil {
+			return config{}, err
+		}
+	}
+	if v := strings.TrimSpace(env["TOKEN_REFRESH_INTERVAL"]); v != "" {
+		cfg.TokenRefresh, err = time.ParseDuration(v)
+		if err != nil {
+			return config{}, fmt.Errorf("TOKEN_REFRESH_INTERVAL: %w", err)
+		}
+		if cfg.TokenRefresh <= 0 {
+			return config{}, fmt.Errorf("TOKEN_REFRESH_INTERVAL: must be positive")
+		}
+	}
 	if raw, ok := env["REFS"]; ok {
 		refs, err := parseRefs(raw)
 		if err != nil {
@@ -71,7 +95,6 @@ func loadConfig(environ []string) (config, error) {
 	if v := strings.TrimSpace(env["LISTEN"]); v != "" {
 		cfg.Listen = v
 	}
-	var err error
 	if v := strings.TrimSpace(env["INTERVAL"]); v != "" {
 		cfg.Interval, err = time.ParseDuration(v)
 		if err != nil {
@@ -215,6 +238,15 @@ func parseNonNegativeInt64(name, raw string) (int64, error) {
 		return 0, fmt.Errorf("%s: must not be negative", name)
 	}
 	return n, nil
+}
+
+func parseOAuthCredentials(raw string) (string, string, error) {
+	id, secret, ok := strings.Cut(strings.TrimSpace(raw), ":")
+	id = strings.TrimSpace(id)
+	if !ok || id == "" || secret == "" {
+		return "", "", fmt.Errorf("OAUTH_CREDENTIALS must be client_id:client_secret")
+	}
+	return id, secret, nil
 }
 
 func parseBool(raw string) (bool, error) {

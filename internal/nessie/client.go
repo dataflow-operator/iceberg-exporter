@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"iceberg-exporter/internal/catalog"
@@ -65,7 +66,7 @@ type Config struct {
 type Client struct {
 	name       string
 	baseURL    string
-	token      string
+	token      atomic.Pointer[string]
 	refs       []catalog.Ref
 	baseRef    catalog.Ref
 	hasBase    bool
@@ -100,17 +101,33 @@ func New(cfg Config) (*Client, error) {
 	if historyMax == 0 {
 		historyMax = defaultHistoryMax
 	}
-	return &Client{
+	client := &Client{
 		name:       name,
 		baseURL:    baseURL,
-		token:      strings.TrimSpace(cfg.Token),
 		refs:       refs,
 		baseRef:    baseRef,
 		hasBase:    hasBase,
 		pageSize:   cfg.PageSize,
 		historyMax: historyMax,
 		http:       httpClient(cfg.HTTPClient),
-	}, nil
+	}
+	client.SetToken(cfg.Token)
+	return client, nil
+}
+
+// SetToken replaces the bearer used by later requests.
+// An empty token removes the Authorization header. The catalog walk keeps running.
+func (c *Client) SetToken(token string) {
+	token = strings.TrimSpace(token)
+	c.token.Store(&token)
+}
+
+func (c *Client) bearer() string {
+	token := c.token.Load()
+	if token == nil {
+		return ""
+	}
+	return *token
 }
 
 func (c *Client) Name() string { return c.name }
@@ -333,8 +350,9 @@ func (c *Client) getJSON(ctx context.Context, path string, query url.Values, des
 		return fmt.Errorf("nessie: %s: %w", path, err)
 	}
 	req.Header.Set("Accept", "application/json")
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
+	token := c.bearer()
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -346,7 +364,7 @@ func (c *Client) getJSON(ctx context.Context, path string, query url.Values, des
 		return fmt.Errorf("nessie: %s: %w", path, err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return &statusError{path: path, status: resp.StatusCode, body: redact(snippet(body), c.token)}
+		return &statusError{path: path, status: resp.StatusCode, body: redact(snippet(body), token)}
 	}
 	if dest == nil {
 		return nil

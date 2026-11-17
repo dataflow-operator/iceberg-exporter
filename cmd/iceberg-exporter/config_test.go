@@ -37,6 +37,9 @@ func TestLoadConfigOverrides(t *testing.T) {
 	cfg, err := loadConfig([]string{
 		"NESSIE_URL=http://nessie:19120",
 		"NESSIE_TOKEN=supersecret",
+		"KEYCLOAK_TOKEN_URL=http://keycloak/token",
+		"OAUTH_CREDENTIALS=client:sec:ret",
+		"TOKEN_REFRESH_INTERVAL=2m",
 		"CATALOG_NAME=prod",
 		"REFS=main, feature",
 		"BASE_REF=main",
@@ -60,6 +63,12 @@ func TestLoadConfigOverrides(t *testing.T) {
 	}
 	if cfg.NessieToken != "supersecret" || cfg.Storage.SecretKey != "supersecret" {
 		t.Fatal("credentials were not kept")
+	}
+	if cfg.KeycloakURL != "http://keycloak/token" || cfg.OAuthClientID != "client" || cfg.OAuthClientSecret != "sec:ret" {
+		t.Fatal("oauth credentials were not kept")
+	}
+	if cfg.TokenRefresh != 2*time.Minute {
+		t.Fatalf("token refresh %s", cfg.TokenRefresh)
 	}
 	if cfg.CatalogName != "prod" || cfg.Listen != ":9099" || cfg.Deletes || cfg.Storage.PathStyle {
 		t.Fatalf("overrides: %+v", cfg)
@@ -118,6 +127,11 @@ func TestLoadConfigRejects(t *testing.T) {
 		{"NESSIE_URL=http://nessie:19120", "NAMESPACES=!"},
 		{"NESSIE_URL=http://nessie:19120", "NAMESPACES=analytics,analytics"},
 		{"NESSIE_URL=http://nessie:19120", "NAMESPACES=analytics,!analytics"},
+		{"NESSIE_URL=http://nessie:19120", "OAUTH_CREDENTIALS=client:secret"},
+		{"NESSIE_URL=http://nessie:19120", "KEYCLOAK_TOKEN_URL=http://keycloak/token"},
+		{"NESSIE_URL=http://nessie:19120", "KEYCLOAK_TOKEN_URL=http://keycloak/token", "OAUTH_CREDENTIALS=nosecret"},
+		{"NESSIE_URL=http://nessie:19120", "TOKEN_REFRESH_INTERVAL=0s"},
+		{"NESSIE_URL=http://nessie:19120", "TOKEN_REFRESH_INTERVAL=soon"},
 	}
 	for _, env := range cases {
 		t.Run(strings.Join(env, ","), func(t *testing.T) {

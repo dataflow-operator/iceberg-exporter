@@ -44,6 +44,11 @@ func run(environ []string) error {
 	if err != nil {
 		return err
 	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := refreshNessieToken(ctx, cfg, client); err != nil {
+		return err
+	}
 	meta := metadata.NewCollector(reader, metadata.WithEntries(metadata.EntriesConfig{
 		RefreshInterval: cfg.Refresh,
 		DeleteManifests: cfg.Deletes,
@@ -60,9 +65,6 @@ func run(environ []string) error {
 	if err != nil {
 		return err
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	errCh := make(chan error, 1)
 	go func() {

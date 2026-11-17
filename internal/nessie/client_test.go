@@ -700,6 +700,37 @@ func TestRevisionWrappedReference(t *testing.T) {
 	}
 }
 
+func TestClientSetTokenReplacesBearer(t *testing.T) {
+	t.Parallel()
+	var mu sync.Mutex
+	var got []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		got = append(got, r.Header.Get("Authorization"))
+		mu.Unlock()
+		w.Write([]byte(`{"specVersion":"2.2.0"}`))
+	}))
+	t.Cleanup(srv.Close)
+	client := mustClient(t, srv, Config{Token: "first", Refs: []catalog.Ref{{Name: "main"}}})
+	if err := client.Probe(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	client.SetToken("second")
+	if err := client.Probe(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	client.SetToken("  ")
+	if err := client.Probe(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	want := []string{"Bearer first", "Bearer second", ""}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("authorization %q", got)
+	}
+}
+
 func mustClient(t *testing.T, srv *httptest.Server, cfg Config) *Client {
 	t.Helper()
 	cfg.Name = "warehouse"

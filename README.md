@@ -2,7 +2,7 @@
 
 Prometheus pull-экспортер состояния Iceberg-таблиц. Первая реализация каталога — Nessie API v2. Каталог отдаёт указатель на таблицу, статистика читается из warehouse один раз на новую `metadataLocation` и ещё раз на новый snapshot. Другой каталог подключается тем же портом `internal/catalog` и не меняет метрики таблиц.
 
-`GET /metrics` отдаёт последний собранный текст. Сбор текста идёт в конце фонового refresh и не блокирует HTTP. Обход каталога и чтение warehouse тоже идут в фоне.
+`GET /metrics` отдаёт последний собранный текст. До первого успешного refresh ответ 503, а не пустой 200. Сбор текста идёт в конце фонового refresh и не блокирует HTTP. Обход каталога и чтение warehouse тоже идут в фоне.
 
 Справочник серий — [docs/metrics.md](docs/metrics.md). Дашборды, PromQL и пороги — [docs/alerts.md](docs/alerts.md).
 
@@ -65,7 +65,8 @@ scrape_configs:
 | --- | --- | --- | --- |
 | `Name` | `nessie.Config` | обязательно | Label `catalog`. Два Nessie на одном экспортере различаются этим именем, не типом адаптера |
 | `BaseURL` | `nessie.Config` | обязательно | Origin Nessie, суффикс `/api/v2` необязателен |
-| `Token` | `nessie.Config` | пусто | Bearer-секрет. Передавайте из env |
+| `Token` | `nessie.Config` | пусто | Bearer-секрет. Передавайте из env `NESSIE_TOKEN` |
+| `KEYCLOAK_TOKEN_URL` | env процесса | пусто | Вместе с `OAUTH_CREDENTIALS` (`client_id:client_secret`) процесс сам обновляет bearer в живом клиенте Nessie. `TOKEN_REFRESH_INTERVAL` задаёт период; пустое значение берёт 4/5 от `expires_in`. [deploy/entrypoint.sh](deploy/entrypoint.sh) только делает `exec`: рестарт ради токена стирает серии |
 | `Refs` | `nessie.Config` | обязательно | Ветки и теги, которые обходятся. Пустой kind — branch |
 | `BaseRef` | `nessie.Config` | пусто | База для `iceberg_ref_tables_diverged`. Пустое значение отключает сравнение. Если задано, ref должен быть в `Refs` |
 | `PageSize` | `nessie.Config`, `exporter.Config` | 0 | `max-records` для entries и diff. 0 не передаёт параметр. Отрицательное значение отвергается |
