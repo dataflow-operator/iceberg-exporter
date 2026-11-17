@@ -53,6 +53,29 @@ type Stats struct {
 	DataManifests   int
 	DeleteManifests int
 	PartitionSpecs  int
+
+	// Write settings come from table properties, not from the snapshot summary.
+	// Enum fields are unset when the key is absent and other when the value is
+	// outside the known set. Numeric fields are published only when Set is true:
+	// the property was an integer greater than zero. A missing key is not filled
+	// with the Iceberg spec default.
+	Format              string
+	DeleteMode          string
+	UpdateMode          string
+	MergeMode           string
+	DistributionMode    string
+	Compression         string
+	TargetFileSize      int64
+	TargetFileSizeSet   bool
+	RowGroupSize        int64
+	RowGroupSizeSet     bool
+	PageSize            int64
+	PageSizeSet         bool
+	ManifestTarget      int64
+	ManifestTargetSet   bool
+	PartitionFields     int
+	PartitionSpecID     int
+	PartitionTransforms string
 }
 
 type parsed struct {
@@ -107,6 +130,7 @@ func statsFrom(meta table.Metadata) (Stats, error) {
 		MetadataLogEntries: len(slices.Collect(meta.PreviousFiles())),
 		SnapshotLogEntries: len(slices.Collect(meta.SnapshotLogs())),
 	}
+	applyWriteConfig(&stats, meta)
 	snap := meta.CurrentSnapshot()
 	if snap == nil {
 		return stats, nil

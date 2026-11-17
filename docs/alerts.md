@@ -87,7 +87,7 @@ File-level правила умножаются на возраст per-table к�
 
 ## Одна таблица
 
-Дашборд [iceberg-table.json](../deploy/grafana/dashboards/iceberg-table.json), uid `iceberg-table`, заголовок «Iceberg: таблица». Переменные `catalog`, `ref`, `namespace`, `table`. `ref` здесь одно значение.
+Дашборд [iceberg-table.json](../deploy/grafana/dashboards/iceberg-table.json), uid `iceberg-table`, заголовок «Iceberg: таблица». Переменные `exported_namespace`, `catalog`, `ref`, `namespace`, `table`. `exported_namespace` — namespace экспортера в Prometheus, `ref` здесь одно значение.
 
 Панели текущего состояния: records, data files, байты, возраст snapshot, партиции, манифесты, последняя operation, возраст кэша манифестов.
 

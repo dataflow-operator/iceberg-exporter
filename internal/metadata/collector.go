@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -487,6 +488,7 @@ func (c *Collector) emit(ch chan<- prometheus.Metric, key seriesKey, pub publish
 	}
 	ch <- prometheus.MustNewConstMetric(c.descs.hasSnapshot, prometheus.GaugeValue, has, labels...)
 	ch <- prometheus.MustNewConstMetric(c.descs.formatVersion, prometheus.GaugeValue, float64(stats.FormatVersion), labels...)
+	c.emitWriteConfig(ch, labels, stats)
 	ch <- prometheus.MustNewConstMetric(c.descs.snapshotAge, prometheus.GaugeValue, ageSeconds(stats, now), labels...)
 	ch <- prometheus.MustNewConstMetric(c.descs.lastUpdated, prometheus.GaugeValue, unixSeconds(stats.LastUpdated), labels...)
 	ch <- prometheus.MustNewConstMetric(c.descs.snapshots, prometheus.GaugeValue, float64(stats.Snapshots), labels...)
@@ -513,6 +515,37 @@ func (c *Collector) emit(ch chan<- prometheus.Metric, key seriesKey, pub publish
 	if scanned {
 		c.emitEntries(ch, labels, entries, now)
 	}
+}
+
+func (c *Collector) emitWriteConfig(ch chan<- prometheus.Metric, labels []string, stats Stats) {
+	ch <- prometheus.MustNewConstMetric(
+		c.descs.writeConfig, prometheus.GaugeValue, 1,
+		append(append([]string{}, labels...),
+			stats.Format,
+			stats.DeleteMode,
+			stats.UpdateMode,
+			stats.MergeMode,
+			stats.DistributionMode,
+			stats.Compression,
+		)...,
+	)
+	if stats.TargetFileSizeSet {
+		ch <- prometheus.MustNewConstMetric(c.descs.targetFileSize, prometheus.GaugeValue, float64(stats.TargetFileSize), labels...)
+	}
+	if stats.RowGroupSizeSet {
+		ch <- prometheus.MustNewConstMetric(c.descs.rowGroupSize, prometheus.GaugeValue, float64(stats.RowGroupSize), labels...)
+	}
+	if stats.PageSizeSet {
+		ch <- prometheus.MustNewConstMetric(c.descs.pageSize, prometheus.GaugeValue, float64(stats.PageSize), labels...)
+	}
+	if stats.ManifestTargetSet {
+		ch <- prometheus.MustNewConstMetric(c.descs.manifestTarget, prometheus.GaugeValue, float64(stats.ManifestTarget), labels...)
+	}
+	ch <- prometheus.MustNewConstMetric(c.descs.partitionFields, prometheus.GaugeValue, float64(stats.PartitionFields), labels...)
+	ch <- prometheus.MustNewConstMetric(
+		c.descs.partitionSpec, prometheus.GaugeValue, 1,
+		append(append([]string{}, labels...), strconv.Itoa(stats.PartitionSpecID), stats.PartitionTransforms)...,
+	)
 }
 
 func ageSeconds(stats Stats, now time.Time) float64 {
@@ -562,6 +595,13 @@ type metricDescs struct {
 	deleteBytes      *prometheus.Desc
 	manifestCacheAge *prometheus.Desc
 	manifestQueue    *prometheus.Desc
+	writeConfig      *prometheus.Desc
+	targetFileSize   *prometheus.Desc
+	rowGroupSize     *prometheus.Desc
+	pageSize         *prometheus.Desc
+	manifestTarget   *prometheus.Desc
+	partitionFields  *prometheus.Desc
+	partitionSpec    *prometheus.Desc
 }
 
 func newDescs(smallFileBytes int64) metricDescs {
@@ -707,6 +747,41 @@ func newDescs(smallFileBytes int64) metricDescs {
 			"Manifest-entry scans waiting to read the warehouse. File-level table metrics are served from an in-memory cache.",
 			nil, nil,
 		),
+		writeConfig: prometheus.NewDesc(
+			"iceberg_table_write_config",
+			"1 for the write properties stored in table metadata. A label is unset when the key is absent and other when the value is outside the known set. Writer session defaults are not visible.",
+			append(append([]string{}, labels...), "format", "delete_mode", "update_mode", "merge_mode", "distribution_mode", "compression"), nil,
+		),
+		targetFileSize: prometheus.NewDesc(
+			"iceberg_table_write_target_file_size_bytes",
+			"write.target-file-size-bytes from table properties, when it is an integer greater than 0. Absent when the property is unset or invalid.",
+			labels, nil,
+		),
+		rowGroupSize: prometheus.NewDesc(
+			"iceberg_table_parquet_row_group_size_bytes",
+			"write.parquet.row-group-size-bytes from table properties, when it is an integer greater than 0. Absent when the property is unset or invalid.",
+			labels, nil,
+		),
+		pageSize: prometheus.NewDesc(
+			"iceberg_table_parquet_page_size_bytes",
+			"write.parquet.page-size-bytes from table properties, when it is an integer greater than 0. Absent when the property is unset or invalid.",
+			labels, nil,
+		),
+		manifestTarget: prometheus.NewDesc(
+			"iceberg_table_manifest_target_size_bytes",
+			"commit.manifest.target-size-bytes from table properties, when it is an integer greater than 0. Absent when the property is unset or invalid.",
+			labels, nil,
+		),
+		partitionFields: prometheus.NewDesc(
+			"iceberg_table_partition_fields",
+			"Number of fields in the current partition spec. Zero when the spec has no fields.",
+			labels, nil,
+		),
+		partitionSpec: prometheus.NewDesc(
+			"iceberg_table_partition_spec",
+			"1 for the current partition spec. transforms lists field transforms in order, without column names. The value is none when the spec has no fields. More than 8 fields are truncated.",
+			append(append([]string{}, labels...), "spec_id", "transforms"), nil,
+		),
 	}
 }
 
@@ -740,6 +815,13 @@ func (d metricDescs) describe(ch chan<- *prometheus.Desc) {
 		d.deleteBytes,
 		d.manifestCacheAge,
 		d.manifestQueue,
+		d.writeConfig,
+		d.targetFileSize,
+		d.rowGroupSize,
+		d.pageSize,
+		d.manifestTarget,
+		d.partitionFields,
+		d.partitionSpec,
 	} {
 		ch <- desc
 	}

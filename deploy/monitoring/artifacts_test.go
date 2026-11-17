@@ -174,6 +174,12 @@ func TestGrafanaDashboards(t *testing.T) {
 		if ref.Current.Value != "main" {
 			t.Fatalf("%s ref default = %#v", dash.UID, ref.Current)
 		}
+		variable(t, dash, "exported_namespace")
+		for _, expr := range exprs(dash) {
+			if !strings.Contains(expr, "exported_namespace=") {
+				t.Fatalf("%s expr missing exported_namespace: %s", dash.UID, expr)
+			}
+		}
 	}
 	if variable(t, table, "ref").Multi {
 		t.Fatal("single-table ref variable selects many refs")

@@ -170,6 +170,58 @@ func TestUpdateUsesEmbeddedMetadata(t *testing.T) {
 	requireGauge(t, samples(t, c), "iceberg_table_records{"+prefix+"}", 10)
 }
 
+func TestUpdatePublishesWriteConfig(t *testing.T) {
+	t.Parallel()
+	body := withProperties(t, metadataJSON(metadataOpts{
+		records: 10, dataFiles: 2, fileBytes: 1000, operation: "append", snapshots: 1, snapshotLogs: 1,
+	}), `
+		"write.format.default": "parquet",
+		"write.delete.mode": "merge-on-read",
+		"write.update.mode": "copy-on-write",
+		"write.target-file-size-bytes": "134217728",
+		"write.parquet.page-size-bytes": "1048576"
+	`)
+	body = replacePartitionSpec(t, body, `{
+		"spec-id": 2,
+		"fields": [
+			{"name": "id_bucket", "transform": "bucket[16]", "source-id": 1, "field-id": 1000}
+		]
+	}`, 2, 1000)
+	reader := &memReader{files: map[string][]byte{
+		currentManifestList: oneDataManifest(t),
+	}}
+	c := NewCollector(reader)
+	loc := "s3://wh/db/events/metadata/v1.metadata.json"
+	err := c.Update(context.Background(), []Table{{
+		Catalog: "prod",
+		Ref:     "main",
+		Pointer: catalog.TablePointer{
+			ContentID:        "nessie-1",
+			Namespace:        "db",
+			Name:             "events",
+			MetadataLocation: loc,
+			SnapshotID:       snap(7),
+			Metadata:         body,
+		},
+	}})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	got := samples(t, c)
+	prefix := "catalog=prod,namespace=db,ref=main,table=events"
+	requireGauge(t, got, "iceberg_table_write_config{catalog=prod,compression=unset,delete_mode=merge-on-read,distribution_mode=unset,format=parquet,merge_mode=unset,namespace=db,ref=main,table=events,update_mode=copy-on-write}", 1)
+	requireGauge(t, got, "iceberg_table_write_target_file_size_bytes{"+prefix+"}", 134217728)
+	requireGauge(t, got, "iceberg_table_parquet_page_size_bytes{"+prefix+"}", 1048576)
+	requireGauge(t, got, "iceberg_table_partition_fields{"+prefix+"}", 1)
+	requireGauge(t, got, "iceberg_table_partition_spec{catalog=prod,namespace=db,ref=main,spec_id=2,table=events,transforms=bucket[16]}", 1)
+	if _, ok := got["iceberg_table_parquet_row_group_size_bytes{"+prefix+"}"]; ok {
+		t.Fatal("unset row group size was published")
+	}
+	if _, ok := got["iceberg_table_manifest_target_size_bytes{"+prefix+"}"]; ok {
+		t.Fatal("unset manifest target was published")
+	}
+}
+
 func TestUpdateSharesSnapshotAcrossRefs(t *testing.T) {
 	t.Parallel()
 	loc := "s3://wh/db/events/metadata/v1.metadata.json"
