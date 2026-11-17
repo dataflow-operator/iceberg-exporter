@@ -474,6 +474,65 @@ func TestUpdateCancelKeepsPublishedSet(t *testing.T) {
 	requireGauge(t, samples(t, c), "iceberg_table_scrape_error{catalog=prod,namespace=db,ref=main,stage=manifest_list,table=events}", 0)
 }
 
+func TestUpdateReadsTablesConcurrently(t *testing.T) {
+	t.Parallel()
+	const n = 4
+	body := emptyMetadataJSON(0)
+	files := make(map[string][]byte, n)
+	tables := make([]Table, n)
+	for i := range n {
+		loc := fmt.Sprintf("s3://wh/db/t%d/metadata/v1.json", i)
+		files[loc] = body
+		tables[i] = Table{
+			Catalog: "prod", Ref: "main",
+			Pointer: catalog.TablePointer{
+				ContentID:        fmt.Sprintf("c%d", i),
+				Namespace:        "db",
+				Name:             fmt.Sprintf("t%d", i),
+				MetadataLocation: loc,
+			},
+		}
+	}
+	started := make(chan struct{}, n)
+	release := make(chan struct{})
+	reader := &memReader{
+		files: files,
+		beforeRead: func(string) {
+			started <- struct{}{}
+			<-release
+		},
+	}
+	c := NewCollector(reader, WithLoadConcurrency(n))
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- c.Update(context.Background(), tables)
+	}()
+	for range n {
+		select {
+		case <-started:
+		case <-time.After(2 * time.Second):
+			t.Fatal("metadata reads did not overlap")
+		}
+	}
+	close(release)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("update: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("update did not finish")
+	}
+	got := samples(t, c)
+	for i := range n {
+		name := fmt.Sprintf("iceberg_table_has_snapshot{catalog=prod,namespace=db,ref=main,table=t%d}", i)
+		requireGauge(t, got, name, 0)
+	}
+	if reads := reader.Reads(); reads != n {
+		t.Fatalf("reads = %d, want %d", reads, n)
+	}
+}
+
 type memReader struct {
 	mu         sync.Mutex
 	reads      int

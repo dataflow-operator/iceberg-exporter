@@ -15,8 +15,9 @@
 //
 // Manifest entries are a third stage. Update only enqueues a snapshot when its
 // file-level cache is missing or older than the refresh interval. QueueStale
-// does the same enqueue without reading the warehouse, so a Prometheus scrape
-// can schedule the slow scan and still return cached series. Workers read
+// does the same enqueue without reading the warehouse. The exporter calls it
+// while rendering /metrics, so the scrape itself does not take the collector
+// lock. Workers read
 // data-file entries in the background, and delete manifests only when that
 // scan is enabled. Collect republishes the histogram, small-file ratio, and
 // partition skew from memory, so a scrape does not wait on those reads.

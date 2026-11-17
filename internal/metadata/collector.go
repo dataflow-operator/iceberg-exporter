@@ -20,6 +20,10 @@ const (
 	// StageManifestList is the scrape_error stage for a manifest list failure.
 	// Metadata gauges are still published when only this stage fails.
 	StageManifestList = "manifest_list"
+	// DefaultLoadConcurrency is how many tables Update reads at once.
+	// Each read is the metadata JSON and, on a cache miss, the manifest list.
+	// The warehouse cache stays shared. One table's error does not stop the others.
+	DefaultLoadConcurrency = 8
 )
 
 const (
@@ -55,6 +59,9 @@ type Collector struct {
 	snaps      map[snapKey]map[string]tableMeta
 	byLocation map[string]snapKey
 	manifests  map[snapKey]manifestSnapshot
+
+	loadConcurrency int
+	loads           flightGroup
 
 	entries       entrySettings
 	entryQueue    []entryJob
@@ -129,6 +136,9 @@ func NewCollector(reader Reader, opts ...Option) *Collector {
 	for _, opt := range opts {
 		opt(c)
 	}
+	if c.loadConcurrency <= 0 {
+		c.loadConcurrency = DefaultLoadConcurrency
+	}
 	small := c.entries.small
 	if small <= 0 {
 		small = DefaultSmallFileBytes
@@ -139,6 +149,8 @@ func NewCollector(reader Reader, opts ...Option) *Collector {
 }
 
 // Update loads metadata for tables and replaces the published set.
+// Reads of metadata JSON and manifest lists run in a pool of DefaultLoadConcurrency,
+// and one metadataLocation or snapshot is fetched once even when several refs share it.
 // A table whose pointer already contains metadata JSON is not read from the
 // warehouse. A cache hit on content id, snapshot id, and metadataLocation is
 // not read either. The manifest list is cached by content id and snapshot id.
@@ -165,34 +177,38 @@ func (c *Collector) Update(ctx context.Context, tables []Table) error {
 	}
 	c.mu.RUnlock()
 
-	next := make(map[seriesKey]published, len(tables))
+	jobs := make([]updateJob, 0, len(tables))
 	for _, table := range tables {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
 		if table.Pointer.Type == catalog.ContentView || table.Pointer.Name == "" {
 			continue
 		}
-		key := seriesKey{
-			catalog:   table.Catalog,
-			ref:       table.Ref,
-			namespace: table.Pointer.Namespace,
-			table:     table.Pointer.Name,
-		}
-		pub, err := c.load(ctx, table)
-		if err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
+		jobs = append(jobs, updateJob{
+			key: seriesKey{
+				catalog:   table.Catalog,
+				ref:       table.Ref,
+				namespace: table.Pointer.Namespace,
+				table:     table.Pointer.Name,
+			},
+			table: table,
+		})
+	}
+	loaded, err := c.loadAll(ctx, jobs)
+	if err != nil {
+		return err
+	}
+	next := make(map[seriesKey]published, len(loaded))
+	for i, job := range jobs {
+		res := loaded[i]
+		if res.err != nil {
 			kept := published{failed: true}
-			if old, ok := prev[key]; ok && old.ok {
+			if old, ok := prev[job.key]; ok && old.ok {
 				kept = old
 				kept.failed = true
 			}
-			next[key] = kept
+			next[job.key] = kept
 			continue
 		}
-		next[key] = pub
+		next[job.key] = res.pub
 	}
 
 	c.mu.Lock()
@@ -203,42 +219,111 @@ func (c *Collector) Update(ctx context.Context, tables []Table) error {
 	return nil
 }
 
+type updateJob struct {
+	key   seriesKey
+	table Table
+}
+
+type updateResult struct {
+	pub published
+	err error
+}
+
+// loadAll reads metadata and manifest lists for jobs with a bounded pool.
+// A cancelled context returns before any result is published. Later jobs in
+// the slice win when two pointers share a series key.
+func (c *Collector) loadAll(ctx context.Context, jobs []updateJob) ([]updateResult, error) {
+	results := make([]updateResult, len(jobs))
+	if len(jobs) == 0 {
+		return results, nil
+	}
+	conc := c.loadConcurrency
+	if conc < 1 {
+		conc = 1
+	}
+	if conc > len(jobs) {
+		conc = len(jobs)
+	}
+	sem := make(chan struct{}, conc)
+	var wg sync.WaitGroup
+	for i := range jobs {
+		select {
+		case <-ctx.Done():
+			wg.Wait()
+			return nil, ctx.Err()
+		case sem <- struct{}{}:
+		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			pub, err := c.load(ctx, jobs[i].table)
+			results[i] = updateResult{pub: pub, err: err}
+		}(i)
+	}
+	wg.Wait()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	for _, res := range results {
+		if res.err != nil && (errors.Is(res.err, context.Canceled) || errors.Is(res.err, context.DeadlineExceeded)) {
+			return nil, res.err
+		}
+	}
+	return results, nil
+}
+
+// flightGroup runs one call per key and shares the result with waiters.
+type flightGroup struct {
+	mu sync.Mutex
+	m  map[string]*flightCall
+}
+
+type flightCall struct {
+	wg  sync.WaitGroup
+	val any
+	err error
+}
+
+func (g *flightGroup) do(key string, fn func() (any, error)) (any, error) {
+	g.mu.Lock()
+	if g.m == nil {
+		g.m = make(map[string]*flightCall)
+	}
+	if call, ok := g.m[key]; ok {
+		g.mu.Unlock()
+		call.wg.Wait()
+		return call.val, call.err
+	}
+	call := &flightCall{}
+	call.wg.Add(1)
+	g.m[key] = call
+	g.mu.Unlock()
+	call.val, call.err = fn()
+	call.wg.Done()
+	g.mu.Lock()
+	delete(g.m, key)
+	g.mu.Unlock()
+	return call.val, call.err
+}
+
+// WithLoadConcurrency sets how many tables Update reads at once.
+// Zero keeps DefaultLoadConcurrency.
+func WithLoadConcurrency(n int) Option {
+	return func(c *Collector) {
+		c.loadConcurrency = n
+	}
+}
+
 func (c *Collector) load(ctx context.Context, table Table) (published, error) {
 	p := table.Pointer
 	meta, key, ok := c.cached(p)
 	if !ok {
-		raw := []byte(p.Metadata)
-		if len(raw) == 0 {
-			if p.MetadataLocation == "" {
-				return published{}, errors.New("metadata: empty metadata location")
-			}
-			if c.reader == nil {
-				return published{}, errors.New("metadata: nil reader")
-			}
-			body, err := c.reader.Read(ctx, p.MetadataLocation)
-			if err != nil {
-				return published{}, err
-			}
-			raw = body
-		}
-		parsedDoc, err := Parse(raw)
+		var err error
+		meta, key, err = c.fillMeta(ctx, p)
 		if err != nil {
 			return published{}, err
 		}
-		key = snapKey{
-			contentID:   identity(p, parsedDoc.ContentID),
-			snapshotID:  parsedDoc.Stats.SnapshotID,
-			hasSnapshot: parsedDoc.Stats.HasSnapshot,
-		}
-		meta = tableMeta{
-			stats:             parsedDoc.Stats,
-			manifestList:      parsedDoc.manifestList,
-			embeddedPresent:   parsedDoc.embeddedPresent,
-			embeddedManifests: parsedDoc.embeddedManifests,
-			embeddedPaths:     parsedDoc.embeddedPaths,
-			metadataSpecs:     parsedDoc.metadataSpecs,
-		}
-		c.store(key, p.MetadataLocation, meta)
 	}
 	pub := published{
 		stats:    meta.stats,
@@ -264,6 +349,69 @@ func (c *Collector) load(ctx context.Context, table Table) (published, error) {
 	pub.stats.PartitionSpecs = snap.counts.PartitionSpecs
 	pub.manifestsReady = true
 	return pub, nil
+}
+
+type loadedMeta struct {
+	meta tableMeta
+	key  snapKey
+}
+
+// fillMeta parses metadata JSON and stores it.
+// Concurrent callers of one metadataLocation share that read and the cache write.
+func (c *Collector) fillMeta(ctx context.Context, p catalog.TablePointer) (tableMeta, snapKey, error) {
+	if len(p.Metadata) > 0 {
+		return c.parseAndStore(p, p.Metadata)
+	}
+	if p.MetadataLocation == "" {
+		return tableMeta{}, snapKey{}, errors.New("metadata: empty metadata location")
+	}
+	if c.reader == nil {
+		return tableMeta{}, snapKey{}, errors.New("metadata: nil reader")
+	}
+	v, err := c.loads.do("meta\x00"+p.MetadataLocation, func() (any, error) {
+		if meta, key, ok := c.cached(p); ok {
+			return loadedMeta{meta: meta, key: key}, nil
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		body, err := c.reader.Read(ctx, p.MetadataLocation)
+		if err != nil {
+			return nil, err
+		}
+		meta, key, err := c.parseAndStore(p, body)
+		if err != nil {
+			return nil, err
+		}
+		return loadedMeta{meta: meta, key: key}, nil
+	})
+	if err != nil {
+		return tableMeta{}, snapKey{}, err
+	}
+	got := v.(loadedMeta)
+	return got.meta, got.key, nil
+}
+
+func (c *Collector) parseAndStore(p catalog.TablePointer, raw []byte) (tableMeta, snapKey, error) {
+	parsedDoc, err := Parse(raw)
+	if err != nil {
+		return tableMeta{}, snapKey{}, err
+	}
+	key := snapKey{
+		contentID:   identity(p, parsedDoc.ContentID),
+		snapshotID:  parsedDoc.Stats.SnapshotID,
+		hasSnapshot: parsedDoc.Stats.HasSnapshot,
+	}
+	meta := tableMeta{
+		stats:             parsedDoc.Stats,
+		manifestList:      parsedDoc.manifestList,
+		embeddedPresent:   parsedDoc.embeddedPresent,
+		embeddedManifests: parsedDoc.embeddedManifests,
+		embeddedPaths:     parsedDoc.embeddedPaths,
+		metadataSpecs:     parsedDoc.metadataSpecs,
+	}
+	c.store(key, p.MetadataLocation, meta)
+	return meta, key, nil
 }
 
 func identity(p catalog.TablePointer, tableUUID string) string {
@@ -322,20 +470,38 @@ func (c *Collector) store(key snapKey, location string, meta tableMeta) {
 }
 
 func (c *Collector) resolveManifest(ctx context.Context, key snapKey, meta tableMeta) (manifestSnapshot, error) {
-	c.mu.RLock()
-	snap, ok := c.manifests[key]
-	c.mu.RUnlock()
-	if ok {
+	if snap, ok := c.manifestCached(key); ok {
 		return snap, nil
 	}
-	snap, err := c.readManifest(ctx, meta)
+	v, err := c.loads.do(manifestFlightKey(key), func() (any, error) {
+		if snap, ok := c.manifestCached(key); ok {
+			return snap, nil
+		}
+		snap, err := c.readManifest(ctx, meta)
+		if err != nil {
+			return nil, err
+		}
+		c.mu.Lock()
+		c.manifests[key] = snap
+		c.mu.Unlock()
+		return snap, nil
+	})
 	if err != nil {
 		return manifestSnapshot{}, err
 	}
-	c.mu.Lock()
-	c.manifests[key] = snap
-	c.mu.Unlock()
+	snap, _ := v.(manifestSnapshot)
 	return snap, nil
+}
+
+func (c *Collector) manifestCached(key snapKey) (manifestSnapshot, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	snap, ok := c.manifests[key]
+	return snap, ok
+}
+
+func manifestFlightKey(key snapKey) string {
+	return fmt.Sprintf("manifest\x00%s\x00%d\x00%t", key.contentID, key.snapshotID, key.hasSnapshot)
 }
 
 func (c *Collector) readManifest(ctx context.Context, meta tableMeta) (manifestSnapshot, error) {

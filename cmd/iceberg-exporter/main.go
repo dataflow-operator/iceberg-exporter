@@ -34,11 +34,12 @@ func run(environ []string) error {
 		return err
 	}
 	client, err := nessie.New(nessie.Config{
-		Name:    cfg.CatalogName,
-		BaseURL: cfg.NessieURL,
-		Token:   cfg.NessieToken,
-		Refs:    cfg.Refs,
-		BaseRef: cfg.BaseRef,
+		Name:     cfg.CatalogName,
+		BaseURL:  cfg.NessieURL,
+		Token:    cfg.NessieToken,
+		Refs:     cfg.Refs,
+		BaseRef:  cfg.BaseRef,
+		PageSize: cfg.PageSize,
 	})
 	if err != nil {
 		return err
@@ -46,9 +47,16 @@ func run(environ []string) error {
 	meta := metadata.NewCollector(reader, metadata.WithEntries(metadata.EntriesConfig{
 		RefreshInterval: cfg.Refresh,
 		DeleteManifests: cfg.Deletes,
+		Concurrency:     cfg.EntryConcurrency,
+		MaxQueue:        cfg.EntryMaxQueue,
+		MaxBytes:        cfg.EntryMaxBytes,
 	}))
 	defer meta.Close()
-	exp, err := exporter.New(exporter.Config{Interval: cfg.Interval}, meta, client)
+	exp, err := exporter.New(exporter.Config{
+		Interval:   cfg.Interval,
+		Namespaces: cfg.Namespaces,
+		PageSize:   cfg.PageSize,
+	}, meta, client)
 	if err != nil {
 		return err
 	}

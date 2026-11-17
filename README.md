@@ -2,13 +2,13 @@
 
 Prometheus pull-экспортер состояния Iceberg-таблиц. Первая реализация каталога — Nessie API v2. Каталог отдаёт указатель на таблицу, статистика читается из warehouse один раз на новую `metadataLocation` и ещё раз на новый snapshot. Другой каталог подключается тем же портом `internal/catalog` и не меняет метрики таблиц.
 
-`GET /metrics` отдаёт последний кэш из памяти. Обход каталога и чтение warehouse идут в фоне и не блокируют scrape.
+`GET /metrics` отдаёт последний собранный текст. Сбор текста идёт в конце фонового refresh и не блокирует HTTP. Обход каталога и чтение warehouse тоже идут в фоне.
 
 Справочник серий — [docs/metrics.md](docs/metrics.md). Дашборды, PromQL и пороги — [docs/alerts.md](docs/alerts.md).
 
 ## Как собираются данные
 
-Фоновый цикл `exporter.Run` с интервалом `exporter.Config.Interval` (по умолчанию 15 с) для каждого каталога делает следующее.
+Фоновый цикл `exporter.Run` с интервалом `exporter.Config.Interval` (по умолчанию 60 с) для каждого каталога делает следующее.
 
 1. `Probe`. Ошибка ставит `iceberg_catalog_up` в 0 и оставляет прошлые серии таблиц.
 2. Если адаптер реализует `Revisioned` и токен ref совпал, список таблиц не запрашивается. У Nessie токен — commit hash с `GET /api/v2/trees/{ref}`.
@@ -16,7 +16,7 @@ Prometheus pull-экспортер состояния Iceberg-таблиц. Пе
 4. Без revision каждый scrape сравнивает `metadataLocation` с кэшем. `ListInterval` больше нуля отдаёт прошлый список, пока интервал не истёк. `snapshotId` проверяется только когда он есть у обеих сторон.
 5. Metadata JSON читается по `metadataLocation`, если адаптер не вложил его в указатель. Nessie native API вкладывает только location и snapshot id. Кэш ключуется content id (или table-uuid, а до него — namespace и имя) и не перечитывается, пока location не сменился.
 6. Manifest list текущего snapshot читается отдельно и кэшируется по content id и snapshot id. Один и тот же snapshot на разных ref не читается дважды.
-7. Manifest entries не стоят на пути scrape. Если file-level кэш старше `manifest_refresh_interval`, scrape ставит snapshot в очередь. Воркеры читают data-файлы со status `added` и `existing`. Delete-манифесты читаются только при `DeleteManifests`.
+7. Manifest entries не стоят на пути scrape. Если file-level кэш старше `manifest_refresh_interval`, refresh ставит snapshot в очередь, когда собирает текст метрик. Воркеры читают data-файлы со status `added` и `existing`. Delete-манифесты читаются только при `DeleteManifests`.
 
 Views попадают в `iceberg_views` и в file-level скан не идут. JVM-метрики Nessie (`/q/metrics`) экспортер не читает.
 
@@ -70,7 +70,7 @@ scrape_configs:
 | `BaseRef` | `nessie.Config` | пусто | База для `iceberg_ref_tables_diverged`. Пустое значение отключает сравнение. Если задано, ref должен быть в `Refs` |
 | `PageSize` | `nessie.Config`, `exporter.Config` | 0 | `max-records` для entries и diff. 0 не передаёт параметр. Отрицательное значение отвергается |
 | `HistoryMaxRecords` | `nessie.Config` | 100 | `max-records` журнала коммитов. Читает только адаптер с `Historian` |
-| `Interval` | `exporter.Config` | 15 с | Период `Probe` и refresh. Scrape его не ждёт |
+| `Interval` | `exporter.Config` | 60 с | Период `Probe` и refresh. Scrape его не ждёт |
 | `ListInterval` | `exporter.Config` | 0, list каждый refresh | Для каталога без revision: сколько отдавать кэш списка. Для Nessie не используется |
 | `ReconcileInterval` | `exporter.Config` | 0, сверка выключена | Полный list даже при совпавшем hash, в том числе у Nessie |
 | `Namespaces` | `exporter.Config` | все | Include и exclude. Exclude сильнее. Шаблон `analytics` покрывает `analytics` и `analytics.daily` |

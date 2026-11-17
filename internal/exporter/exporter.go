@@ -10,8 +10,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"bytes"
+
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/expfmt"
 
 	"iceberg-exporter/internal/catalog"
 	"iceberg-exporter/internal/metadata"
@@ -19,7 +21,7 @@ import (
 
 // DefaultInterval is how often Run probes catalogs when Config.Interval is zero.
 // The Prometheus scrape does not wait for this loop.
-const DefaultInterval = 15 * time.Second
+const DefaultInterval = 60 * time.Second
 
 // Config is the background catalog walk. Zero intervals keep the catalog
 // package defaults: revisioned catalogs check the token every Refresh, and
@@ -49,8 +51,39 @@ type Exporter struct {
 	refreshMu sync.Mutex
 	snap      atomic.Pointer[snapshot]
 
+	exposition atomic.Pointer[exposition]
+	servedGen  atomic.Uint64
+	credits    atomic.Pointer[creditBag]
+	gen        atomic.Uint64
+
 	handlerOnce sync.Once
 	handler     http.Handler
+}
+
+// exposition is one rendered /metrics body. gen increases every successful render.
+// credits are the commit gauges included in body. Serving this body subtracts
+// them once, and only while it is still the latest body.
+type exposition struct {
+	body    []byte
+	gen     uint64
+	credits map[*commitGauge]float64
+}
+
+type creditBag struct {
+	mu    sync.Mutex
+	items map[*commitGauge]float64
+}
+
+func (b *creditBag) set(g *commitGauge, n float64) {
+	if b == nil || g == nil {
+		return
+	}
+	b.mu.Lock()
+	if b.items == nil {
+		b.items = make(map[*commitGauge]float64)
+	}
+	b.items[g] = n
+	b.mu.Unlock()
 }
 
 type source struct {
@@ -186,6 +219,7 @@ func (e *Exporter) Refresh(ctx context.Context) error {
 	if err := e.meta.Update(ctx, tables); err != nil {
 		return err
 	}
+	e.render()
 	return nil
 }
 
@@ -308,8 +342,8 @@ func keepHistory(prev refSnap, snap *refSnap) {
 	}
 }
 
-// commitGauge is the number of new revision tokens waiting for a scrape.
-// Collect takes the value so a repeated scrape does not count the same commits again.
+// commitGauge is the number of new revision tokens not yet served.
+// Collect peeks the value. Handler subtracts it once when that exposition is served.
 type commitGauge struct {
 	mu    sync.Mutex
 	value float64
@@ -335,7 +369,7 @@ func (g *commitGauge) known() bool {
 	return g.ready
 }
 
-func (g *commitGauge) take() (float64, bool) {
+func (g *commitGauge) peek() (float64, bool) {
 	if g == nil {
 		return 0, false
 	}
@@ -344,9 +378,19 @@ func (g *commitGauge) take() (float64, bool) {
 	if !g.ready {
 		return 0, false
 	}
-	value := g.value
-	g.value = 0
-	return value, true
+	return g.value, true
+}
+
+func (g *commitGauge) subtract(n float64) {
+	if g == nil || n == 0 {
+		return
+	}
+	g.mu.Lock()
+	g.value -= n
+	if g.value < 0 {
+		g.value = 0
+	}
+	g.mu.Unlock()
 }
 
 func (s *source) tableSeries() []metadata.Table {
@@ -397,19 +441,79 @@ func (e *Exporter) publish() {
 	e.snap.Store(snap)
 }
 
-// Handler is GET /metrics. It enqueues a stale manifest scan and writes the
-// cached registry. It does not probe the catalog or read the warehouse.
+// Handler is GET /metrics. It writes the last rendered exposition and does not
+// probe the catalog, read the warehouse, or gather metrics. Before the first
+// successful refresh the body is empty.
 func (e *Exporter) Handler() http.Handler {
 	e.handlerOnce.Do(func() {
-		inner := promhttp.HandlerFor(e.reg, promhttp.HandlerOpts{
-			ErrorHandling: promhttp.ContinueOnError,
-		})
 		e.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			e.meta.QueueStale(e.now())
-			inner.ServeHTTP(w, r)
+			w.Header().Set("Content-Type", string(expfmt.FmtText))
+			body := e.exposition.Load()
+			if body == nil {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if _, err := w.Write(body.body); err != nil {
+				return
+			}
+			e.settle(body)
 		})
 	})
 	return e.handler
+}
+
+// render gathers the registry into the exposition served by Handler.
+// QueueStale runs here so a scrape does not take the collector lock.
+// A gather error keeps the previous body.
+func (e *Exporter) render() {
+	bag := &creditBag{}
+	e.credits.Store(bag)
+	defer e.credits.Store(nil)
+	e.meta.QueueStale(e.now())
+	families, err := e.reg.Gather()
+	if err != nil {
+		return
+	}
+	var buf bytes.Buffer
+	enc := expfmt.NewEncoder(&buf, expfmt.FmtText)
+	for _, family := range families {
+		if err := enc.Encode(family); err != nil {
+			return
+		}
+	}
+	bag.mu.Lock()
+	credits := bag.items
+	bag.mu.Unlock()
+	e.exposition.Store(&exposition{
+		body:    buf.Bytes(),
+		gen:     e.gen.Add(1),
+		credits: credits,
+	})
+}
+
+// settle drops the commit counts that this body already reported.
+// An older body, or a second write of the same body, does not subtract again.
+// Counts that arrived after the render stay on the gauge.
+func (e *Exporter) settle(body *exposition) {
+	for {
+		if e.exposition.Load() != body {
+			return
+		}
+		old := e.servedGen.Load()
+		if old >= body.gen {
+			return
+		}
+		if !e.servedGen.CompareAndSwap(old, body.gen) {
+			continue
+		}
+		if e.exposition.Load() != body {
+			return
+		}
+		for gauge, n := range body.credits {
+			gauge.subtract(n)
+		}
+		return
+	}
 }
 
 // Describe implements prometheus.Collector.
@@ -441,7 +545,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			if ref.headKnown {
 				ch <- prometheus.MustNewConstMetric(e.descs.headAge, prometheus.GaugeValue, ageSeconds(ref.head, now), labels...)
 			}
-			if n, ok := ref.commits.take(); ok {
+			if n, ok := ref.commits.peek(); ok {
+				e.credits.Load().set(ref.commits, n)
 				ch <- prometheus.MustNewConstMetric(e.descs.commits, prometheus.GaugeValue, n, labels...)
 			}
 			if ref.divergedKnown {

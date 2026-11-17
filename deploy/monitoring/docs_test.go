@@ -39,7 +39,7 @@ func TestDocsMatchExporter(t *testing.T) {
 		"RefreshInterval",
 		"SmallFileBytes",
 		"DeleteManifests",
-		"15",
+		"60",
 		"32 MiB",
 	} {
 		if !strings.Contains(readme, field) {

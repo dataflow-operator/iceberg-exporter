@@ -86,8 +86,8 @@ services:
       REFS: main,dev
       BASE_REF: main
       LISTEN: ":8080"
-      INTERVAL: 15s
-      MANIFEST_REFRESH: 1m
+      INTERVAL: 60s
+      MANIFEST_REFRESH: 1h
       DELETE_MANIFESTS: "true"
       S3_ENDPOINT: http://minio:9000
       S3_REGION: us-east-1

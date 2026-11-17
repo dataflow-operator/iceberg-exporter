@@ -6,7 +6,7 @@ Labels таблиц: `catalog`, `ref`, `namespace`, `table`. `catalog` — им�
 
 Серия capability публикуется, когда адаптер эту capability реализует и значение уже известно. Пока серии нет, каталог эту величину не отдал. Ноль публикуется отдельно и означает измеренный ноль.
 
-`GET /metrics` читает память. Возраст snapshot и возраст кэшей считается в момент scrape.
+`GET /metrics` отдаёт текст, собранный в конце последнего успешного refresh. Пока refresh не завершился, тело пустое. Возраст snapshot и возраст кэшей считается в момент этой сборки, а не в момент прихода scrape.
 
 ## Каталог
 
@@ -25,7 +25,7 @@ Labels таблиц: `catalog`, `ref`, `namespace`, `table`. `catalog` — им�
 | Серия | Capability | Labels | Значение |
 | --- | --- | --- | --- |
 | `iceberg_catalog_ref_head_age_seconds` | время HEAD известно | `catalog`, `ref` | возраст commit time HEAD. У Nessie время берётся из журнала `GET /api/v2/trees/{ref}/history`, не из `GET /trees/{ref}` |
-| `iceberg_catalog_commits_since_scrape` | `Historian` | `catalog`, `ref` | gauge новых токенов с прошлого scrape этой серии. Scrape читает значение и сбрасывает его. Для графика коммитов используйте `sum_over_time(...[1h])`. `rate()` эту серию не описывает. Если прошлый hash в прочитанном журнале не встретился, gauge содержит число прочитанных коммитов. Первый успешный обход с пустым известным hash публикует 0 |
+| `iceberg_catalog_commits_since_scrape` | `Historian` | `catalog`, `ref` | gauge новых токенов с прошлой успешной выдачи этого текста. Выдача текущего буфера сбрасывает gauge один раз. Повтор того же буфера не сбрасывает его снова. Для графика коммитов используйте `sum_over_time(...[1h])`. `rate()` эту серию не описывает. Если прошлый hash в прочитанном журнале не встретился, gauge содержит число прочитанных коммитов. Первый успешный обход с пустым известным hash публикует 0 |
 | `iceberg_ref_tables_diverged` | `MultiRef` и задан base ref | `catalog`, `ref`, `base_ref` | таблицы ref, чей snapshot id отличается от base, плюс таблицы, которые есть только на ref. Views не считаются. Таблицы, которые есть только на base, в серию ref не входят. Сравнение идёт по content id, затем по namespace и имени |
 
 ## Metadata JSON
@@ -106,7 +106,7 @@ iceberg_table_files_size_bytes / clamp_min(iceberg_table_data_files, 1)
 
 ## Manifest entries
 
-Медленный контур. Ключ кэша — content id и snapshot id. `/metrics` на каждом scrape перепубликует серии из памяти, поэтому `timestamp()` не отличает свежий скан от закэшированного. Рядом с file-level панелью смотрите `iceberg_table_manifest_cache_age_seconds`.
+Медленный контур. Ключ кэша — content id и snapshot id. Текст `/metrics` собран заранее, поэтому `timestamp()` не отличает свежий скан от закэшированного. Рядом с file-level панелью смотрите `iceberg_table_manifest_cache_age_seconds`.
 
 Сканируются живые data-файлы: status `added` и `existing`. Status `deleted` в агрегаты не входит. Серии появляются после первого успешного скана snapshot. Таблица без snapshot и snapshot без файлов для скана получают нулевой агрегат сразу, без чтения Avro, и их `iceberg_table_manifest_cache_age_seconds` обновляется на refresh. Без `WithEntries` file-level серий нет.
 

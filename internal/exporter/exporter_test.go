@@ -113,6 +113,94 @@ func TestHandlerServesCacheWhileRefreshIsBlocked(t *testing.T) {
 	}
 }
 
+func TestHandlerEmptyBeforeRefresh(t *testing.T) {
+	t.Parallel()
+	cat := &catBase{
+		name: "prod",
+		typ:  "rest",
+		refs: []catalog.Ref{{Name: "main", Kind: catalog.RefSynthetic}},
+	}
+	exp := newExp(t, Config{}, cat)
+	rec := scrape(t, exp)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d", rec.Code)
+	}
+	if rec.Body.Len() != 0 {
+		t.Fatalf("body %q", rec.Body.String())
+	}
+}
+
+func TestHandlerServesPreviousBodyWhileMetadataReadBlocks(t *testing.T) {
+	t.Parallel()
+	cat := &catBase{
+		name: "prod",
+		typ:  "rest",
+		refs: []catalog.Ref{{Name: "main", Kind: catalog.RefSynthetic}},
+		tables: map[string][]catalog.TablePointer{
+			"main": {tablePtr("db", "events", "id-1")},
+		},
+	}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	reader := &gateReader{started: started, release: release, body: emptyMetadata}
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+	meta := metadata.NewCollector(reader)
+	t.Cleanup(meta.Close)
+	exp, err := New(Config{}, meta, cat)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	if err := exp.Refresh(context.Background()); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+	cat.mu.Lock()
+	next := tablePtr("db", "events", "id-1")
+	next.Metadata = nil
+	next.MetadataLocation = "s3://wh/db/events/metadata/v2.json"
+	cat.tables["main"] = []catalog.TablePointer{next}
+	cat.mu.Unlock()
+
+	refreshDone := make(chan error, 1)
+	go func() {
+		refreshDone <- exp.Refresh(context.Background())
+	}()
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("refresh did not read metadata")
+	}
+	done := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		done <- scrape(t, exp)
+	}()
+	var rec *httptest.ResponseRecorder
+	select {
+	case rec = <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("metrics handler blocked on metadata read")
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d", rec.Code)
+	}
+	body := parseBody(t, rec.Body)
+	requireGauge(t, body, "iceberg_table_has_snapshot{catalog=prod,namespace=db,ref=main,table=events}", 0)
+	close(release)
+	select {
+	case err := <-refreshDone:
+		if err != nil {
+			t.Fatalf("blocked refresh: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("refresh did not finish")
+	}
+}
+
 func TestTableErrorDoesNotFailScrape(t *testing.T) {
 	t.Parallel()
 	good := tablePtr("db", "events", "good")
@@ -215,6 +303,13 @@ func TestRevisionHeadAgeAndCommitsSkipUnchangedHash(t *testing.T) {
 	}
 	got = gauges(t, exp)
 	requireGauge(t, got, "iceberg_catalog_commits_since_scrape{catalog=prod,ref=main}", 3)
+	first := scrape(t, exp)
+	second := scrape(t, exp)
+	requireGauge(t, parseBody(t, first.Body), "iceberg_catalog_commits_since_scrape{catalog=prod,ref=main}", 3)
+	requireGauge(t, parseBody(t, second.Body), "iceberg_catalog_commits_since_scrape{catalog=prod,ref=main}", 3)
+	if first.Body.String() != second.Body.String() {
+		t.Fatal("second scrape rebuilt the exposition")
+	}
 	got = gauges(t, exp)
 	requireGauge(t, got, "iceberg_catalog_commits_since_scrape{catalog=prod,ref=main}", 0)
 	if join(cat.knownTokens()) != ",aaa" {
@@ -558,6 +653,30 @@ func tablePtr(namespace, name, id string) catalog.TablePointer {
 }
 
 func snap(id int64) *int64 { return &id }
+
+type gateReader struct {
+	started chan struct{}
+	release chan struct{}
+	body    []byte
+	once    sync.Once
+}
+
+func (g *gateReader) Read(ctx context.Context, _ string) ([]byte, error) {
+	g.once.Do(func() { close(g.started) })
+	select {
+	case <-g.release:
+		return g.body, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func scrape(t *testing.T, exp *Exporter) *httptest.ResponseRecorder {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	exp.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	return rec
+}
 
 func gauges(t *testing.T, exp *Exporter) map[string]float64 {
 	t.Helper()

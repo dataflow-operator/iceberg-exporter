@@ -48,7 +48,7 @@ func newCatalogDescs() catalogDescs {
 		),
 		commits: prometheus.NewDesc(
 			"iceberg_catalog_commits_since_scrape",
-			"New revision tokens since this series was last scraped. The scrape reads the gauge and resets it, so sum_over_time counts commits. Absent when the catalog does not expose a commit log.",
+			"New revision tokens since this exposition was last served. A successful response of the current body resets the gauge once, so sum_over_time counts commits. Absent when the catalog does not expose a commit log.",
 			refLabels, nil,
 		),
 		diverged: prometheus.NewDesc(
